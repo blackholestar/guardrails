@@ -1,0 +1,9 @@
+pandas
+pyarrow
+streamlit
+plotly
+google-genai
+python-dotenv
+pytest
+scikit-learn
+jupyter
