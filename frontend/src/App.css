@@ -1,0 +1,108 @@
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  text-align: left;
+}
+
+h1 { margin: 0; font-size: 2rem; }
+h2 { margin: 1.5rem 0 0.25rem; }
+
+.caption { color: #666; margin: 0.25rem 0 1rem; }
+.hint { color: #444; }
+
+.lookup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.lookup input {
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  width: 12rem;
+}
+.lookup button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: #f26b1d;
+  color: #fff;
+  cursor: pointer;
+}
+.lookup button:disabled { opacity: 0.6; cursor: default; }
+
+button.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: #f26b1d;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+}
+
+.banner { padding: 0.6rem 0.9rem; border-radius: 6px; margin: 0.5rem 0; }
+.banner.error { background: #fde8e8; color: #8a1c1c; }
+.banner.warn { background: #fff4d6; color: #7a5600; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.metric {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  background: #fff;
+}
+.metric-label { font-size: 0.85rem; color: #555; display: flex; align-items: center; gap: 0.4rem; }
+.metric-value { font-size: 1.6rem; font-weight: 600; margin-top: 0.25rem; color: #222; }
+
+.tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid #999;
+  font-size: 0.7rem;
+  color: #666;
+  cursor: help;
+}
+.tip-text {
+  display: none;
+  position: absolute;
+  z-index: 10;
+  bottom: 135%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 15rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  background: #222;
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.tip:hover .tip-text,
+.tip:focus .tip-text { display: block; }
+
+details { margin-top: 1.5rem; }
+pre { background: #f6f6f6; padding: 1rem; overflow: auto; font-size: 0.8rem; }
+
+@media (prefers-color-scheme: dark) {
+  .caption, .hint, .metric-label { color: #aaa; }
+  .metric { background: #1e1e1e; border-color: #333; }
+  .metric-value { color: #f1f1f1; }
+  pre { background: #1a1a1a; }
+  .lookup input { background: #1e1e1e; color: #eee; border-color: #444; }
+}

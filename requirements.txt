@@ -1,7 +1,8 @@
 pandas
 pyarrow
-streamlit
-plotly
+fastapi
+uvicorn
+httpx
 google-genai
 python-dotenv
 pytest

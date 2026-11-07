@@ -22,7 +22,8 @@ Demo format: 1 min pitch, 3 min live twist on a judge-chosen account, 1 min ques
 | Language | Python 3.11+ (local: 3.14) |
 | Data | pandas, pyarrow (Parquet cache) |
 | Engine | Plain Python module |
-| UI / charts | Streamlit, Plotly |
+| Backend API | FastAPI + uvicorn |
+| Frontend | React (Vite), plain JavaScript |
 | AI | Gemini API via `google-genai` (Flash-tier model) |
 | Analysis | Jupyter + pandas (scikit-learn only if modelling) |
 | Tests | pytest |
@@ -35,22 +36,55 @@ src/
   engine.py              compute(account_id, shock) -> results
   plan.py                emergency-fund goal + backup plan
   ai.py                  Gemini narrative + twist-card parser
-app.py                   Streamlit UI
-notebooks/finding.ipynb  exploration for the headline finding
-tests/test_engine.py     checks against the README formulas
+  service.py             UI-agnostic layer returning JSON-safe dicts
+  api.py                 FastAPI routes (/api/accounts/{id}, /api/glossary, ...)
+  glossary.py            plain-language tooltip text and warning messages (served by the API)
+frontend/                React app (Vite)
+  src/App.jsx            account lookup page, metric cards with tooltips
+  src/api.js             fetch client for the backend
+  vite.config.js         proxies /api to the backend on port 8000
+notebooks/               exploration scripts (explore_vulnerability.py, explore_levers.py)
+docs/DATA_INSIGHTS.md    what the data contains and what it says about vulnerability
+tests/                   test_engine.py (formulas, features vs raw CSV), test_api.py (HTTP endpoints)
 cache/                   derived Parquet (git-ignored)
 ```
 
-## Setup
-```
-uv venv && source .venv/bin/activate
+## How to run
+
+Requires [uv](https://docs.astral.sh/uv/) (or any Python 3.11+ with venv) and the `data/data/*.csv` files.
+
+```bash
+# 1. One-time setup (from the project root)
+uv venv                                  # creates .venv (answer y if it asks to replace)
+source .venv/bin/activate
 uv pip install -r requirements.txt
-cp .env.example .env     # add GEMINI_API_KEY
-python -m src.features   # builds cache/features.parquet
-streamlit run app.py
-pytest
+
+# 2. Optional: Gemini key (only needed for the AI layer, not built yet)
+cp .env.example .env                     # then set GEMINI_API_KEY
+
+# 3. Build the per-account feature table (about 10 seconds; also auto-builds on first app run)
+python -m src.features                   # writes cache/features.parquet
+
+# 4. Install frontend dependencies (one time; needs Node 20+)
+cd frontend && npm install && cd ..
+
+# 5. Run the app: two terminals, both from the project root
+uvicorn src.api:app --reload --port 8000     # terminal 1: backend (API docs at http://localhost:8000/docs)
+cd frontend && npm run dev                   # terminal 2: frontend at http://localhost:5173
+
+# 6. Run tests
+pytest -q
+
+# 7. Re-run the data exploration (about 1 minute; reads the 100 MB transactions file)
+python notebooks/explore_vulnerability.py
+python notebooks/explore_levers.py
 ```
-Environment check on this machine: pandas, pyarrow, streamlit, plotly are installed. Still missing: pytest, google-genai, python-dotenv, scikit-learn (all in `requirements.txt`).
+
+Without activating the venv, prefix Python commands with `.venv/bin/`, e.g. `.venv/bin/uvicorn src.api:app --port 8000`.
+The frontend calls `/api/...`, which Vite proxies to port 8000, so the backend must be running.
+Try account IDs 20134 (has bills and a loan), 20111 (no labelled bills) or 20133.
+
+Current status: the account lookup page works (enter an account ID, see I, F, S, B, H, P, gap, runway, with hover tooltips). The API already accepts shock parameters; the shock panel UI, plan and AI layer are not built yet.
 
 ## Plan
 
@@ -58,7 +92,7 @@ Environment check on this machine: pandas, pyarrow, streamlit, plotly are instal
 - [ ] `features.py`: per-account I, F, S, B, H, P, history length, loan status, district, age. Cache to Parquet.
 - [ ] `engine.py`: runway per the README formula; composable shocks (income multiplier + duration, bills %, one-off cost).
 - [ ] `tests/`: hand-check 3 to 5 accounts; edge cases (buffer <= 0, gap <= 0, cap at 120, zero bills).
-- [ ] Streamlit skeleton wired to the engine.
+- [x] React frontend + FastAPI backend wired to the engine (replaced the original Streamlit idea).
 
 ### Phase 2: evening (UI, plan, finding)
 - [ ] Profile screen: income, fixed costs, buffer, runway, balance-history chart, spending breakdown.
