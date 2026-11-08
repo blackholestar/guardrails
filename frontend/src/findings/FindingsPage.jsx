@@ -191,6 +191,15 @@ export default function FindingsPage() {
             Data: PKDD’99 Financial dataset (real anonymized Czech bank data, re-dated to 2020–2025 and converted to CAD).
             The exact percentages belong to these customers; the patterns are what carry over.
           </p>
+          <div className="fx-context">
+            <h3>Where the data really comes from</h3>
+            <p>
+              The records are from a Czech bank in 1993–1998, just a few years after communism ended in Czechoslovakia
+              in 1989. Personal bank accounts, cards and loans were still new to most people, and most money still
+              moved in cash. Some of what we saw, like how much runs through cash withdrawals, may reflect that time
+              rather than how Canadians bank today.
+            </p>
+          </div>
         </section>
       </main>
     </div>

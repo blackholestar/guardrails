@@ -26,7 +26,7 @@ const CHAPTERS = [
   },
   {
     rail: [laidOff, 0],
-    title: 'The road warns you first.',
+    title: 'You’ll run out of money eventually.',
     body: 'Of customers who were ever overdrawn, 64% first came within $500 of zero, a median 13 months earlier. Guardrails watches for that dip.',
   },
   {
