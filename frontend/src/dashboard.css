@@ -116,7 +116,36 @@
   .ds .hb-track { grid-column: 1 / -1; order: 3; }
 }
 
-.ds .working { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--rule); }
-.ds .working dt { color: var(--muted); font-size: 12px; }
-.ds .working dd { margin: 2px 0 0; font-weight: 600; }
-@media (max-width: 860px) { .ds .working { grid-template-columns: 1fr 1fr; } }
+.ds .rw-work { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--rule); }
+.ds .rw-work dt { color: var(--muted); font-size: 12px; }
+.ds .rw-work dd { margin: 2px 0 0; font-weight: 600; }
+@media (max-width: 860px) { .ds .rw-work { grid-template-columns: 1fr 1fr; } }
+
+/* Gemini scenario reader (in the Shock card) and Gemini's plan card */
+.ds .ai-form { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+.ds .ai-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.ds .ai-form textarea {
+  width: 100%; resize: vertical; min-height: 64px; padding: 8px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);
+}
+.ds .ai-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.ds .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.ds .ai-error { margin-top: 8px; font-size: 13px; color: var(--short); }
+.ds .ai-read { margin-top: 8px; font-size: 13px; }
+.ds .ai-plan { margin-top: 16px; }
+.ds .ai-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.ds .ai-desc { font-size: 15px; margin-bottom: 10px; max-width: 60ch; }
+.ds .ai-why { font-size: 13px; margin-bottom: 14px; max-width: 60ch; }
+.ds .ai-vars { margin-top: 12px; }
+.ds .ai-model { margin-top: 12px; }
+@media (max-width: 860px) { .ds .ai-cols { grid-template-columns: 1fr; } }
+
+.ds .ai-bar { margin-bottom: 16px; }
+.ds .ai-form-wide { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: end; }
+.ds .ai-form-wide .ai-label { grid-column: 1 / -1; font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 4px; }
+.ds .ai-form-wide textarea { min-height: 44px; height: 44px; }
+.ds .ai-form-wide .ai-actions { margin: 0; }
+.ds .ai-form-wide .ai-actions .muted { display: none; }
+.ds .ai-form-wide .ai-error, .ds .ai-form-wide .ai-read { grid-column: 1 / -1; }
+.ds .ai-hint { grid-column: 1 / -1; }
+@media (max-width: 860px) { .ds .ai-form-wide { grid-template-columns: 1fr; } }

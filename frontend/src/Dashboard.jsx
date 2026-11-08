@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchAccount, fetchGlossary } from './api'
+import { fetchAccount, fetchGlossary, planScenario } from './api'
 import { runway, levers, money } from './runway'
 import * as F from './data/findings'
 import './dashboard.css'
@@ -57,8 +57,42 @@ function Engine({ initial }) {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  // Gemini reads a typed scenario into shock variables and proposes a plan; the engine does the math.
+  const [aiText, setAiText] = useState('')
+  const [ai, setAi] = useState(null)
+  const [aiError, setAiError] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
   useEffect(() => { fetchGlossary().then(setGlossary).catch(() => {}) }, [])
   useEffect(() => { if (initial) { setInput(initial); setId(initial) } }, [initial])
+  useEffect(() => { setAi(null); setAiError(null) }, [id])
+
+  const toShock = (v) => ({
+    income_multiplier: v.income_multiplier ?? 1,
+    income_months: v.income_months ?? 6,
+    bills_pct: v.bills_pct ?? 0,
+    one_off_cost: v.one_off_cost ?? 0,
+    extra_monthly: v.extra_monthly ?? 0,
+  })
+
+  async function readScenario(e) {
+    e.preventDefault()
+    const text = aiText.trim()
+    if (!text || aiLoading) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const r = await planScenario(id, text)
+      setAi(r)
+      setOneOffMonths(0)
+      setShock(toShock(r.impact.variables))
+    } catch (err) {
+      setAi(null)
+      setAiError(`${err.message} The sliders and presets still work.`)
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const effective = useMemo(() => {
     const s = { ...shock }
@@ -107,7 +141,7 @@ function Engine({ initial }) {
               {makesIt
                 ? `Under this shock the savings last ${months(after)}, past the ${duration}-month mark.`
                 : `Under this shock the savings last ${months(after)}, ${(duration - afterN).toFixed(1)} months short of ${duration}.`}
-              {!makesIt && lv[0] && lv[0].after.months >= duration && ` ${lv[0].label} gets them there.`}
+              {!makesIt && lv[0] && lv[0].after.months >= duration && ` Best move: ${lv[0].label.toLowerCase()} (${lv[0].after.label} months).`}
             </p>
           )}
         </div>
@@ -119,6 +153,28 @@ function Engine({ initial }) {
       </div>
 
       {error && <div className="ds-error" role="alert">{error}</div>}
+
+      <section className="card ai-bar" aria-label="Describe what happened">
+          <form className="ai-form ai-form-wide" onSubmit={readScenario}>
+            <label htmlFor="scenario" className="ai-label">Describe what happened</label>
+            <textarea
+              id="scenario"
+              rows={3}
+              maxLength={2000}
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              placeholder="Laid off, EI pays 55% for 6 months, and rent went up 15%"
+            />
+            <div className="ai-actions">
+              <button className="btn-primary" type="submit" disabled={aiLoading || !aiText.trim()}>
+                {aiLoading ? 'Reading…' : 'Read with Gemini'}
+              </button>
+              <span className="muted small">Gemini sets the sliders; the engine does the math.</span>
+            </div>
+            {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+            {ai && <p className="ai-read"><strong>Read as:</strong> {ai.impact_summary}</p>}
+          </form>
+      </section>
 
       <div className="grid-top">
         <section className="card runway-card" aria-labelledby="h-runway">
@@ -136,7 +192,7 @@ function Engine({ initial }) {
               <p className={`status ${makesIt ? 'ok' : 'short'}`}>
                 <span aria-hidden="true">{makesIt ? '▲' : '▼'}</span> {makesIt ? `Makes it through ${duration} months` : `Runs out before month ${duration}`}
               </p>
-              <dl className="working">
+              <dl className="rw-work">
                 <div><dt>Income</dt><dd className="num">{money(before.income_after)} &rarr; {money(after.income_after)}</dd></div>
                 <div><dt>Spending</dt><dd className="num">{money(before.spending_after)} &rarr; {money(after.spending_after)}</dd></div>
                 <div><dt>Monthly gap</dt><dd className="num">{after.gap > 0 ? money(after.gap) : 'None'}</dd></div>
@@ -158,7 +214,7 @@ function Engine({ initial }) {
           <Slider id="inc" label="Income kept" value={shock.income_multiplier} min={0} max={1} step={0.05} fmt={(v) => pct(v)} onChange={set('income_multiplier')} />
           <Slider id="dur" label="Shock lasts" value={shock.income_months} min={1} max={12} step={1} fmt={(v) => `${v} mo`} onChange={set('income_months')} />
           <Slider id="bills" label="Household bills" value={shock.bills_pct} min={0} max={0.5} step={0.05} fmt={(v) => `+${pct(v)}`} onChange={set('bills_pct')} />
-          <Slider id="extra" label="Extra each month" value={shock.extra_monthly} min={0} max={2000} step={50} fmt={money} onChange={set('extra_monthly')} />
+          <Slider id="extra" label="Extra each month" value={shock.extra_monthly} min={-2000} max={2000} step={50} fmt={money} onChange={set('extra_monthly')} />
           <Slider id="once" label="One-off cost" value={shock.one_off_cost} min={0} max={20000} step={250} fmt={money} onChange={set('one_off_cost')} />
           {oneOffMonths > 0 && p && <p className="muted small">Plus a repair of one month&rsquo;s spending: {money(p.S)}.</p>}
         </section>
@@ -205,8 +261,57 @@ function Engine({ initial }) {
         </section>
       </div>
 
+      {ai && <AiPlan ai={ai} onApply={() => setShock(toShock(ai.plan.variables))} />}
       {p && <Plan p={prof} shock={effective} duration={duration} />}
     </>
+  )
+}
+
+// Gemini's plan for the typed scenario. Runway figures come from the engine (src/service.py plan_scenario).
+const VAR_LABELS = {
+  income_multiplier: ['Income received', (v) => pct(v)],
+  income_months: ['Lasts', (v) => (v == null ? 'Indefinitely' : `${v} mo`)],
+  bills_pct: ['Household bills', (v) => `${v > 0 ? '+' : ''}${pct(v)}`],
+  one_off_cost: ['One-off cost', money],
+  extra_monthly: ['Monthly spending change', (v) => `${v > 0 ? '+' : ''}${money(v)}`],
+}
+
+function AiPlan({ ai, onApply }) {
+  const imp = ai.impact.variables
+  const pv = ai.plan.variables
+  return (
+    <section className="card ai-plan" aria-labelledby="h-aiplan">
+      <header className="card-h">
+        <h2 id="h-aiplan">Gemini&rsquo;s plan</h2>
+        <span className="muted">&ldquo;{ai.scenario}&rdquo;</span>
+      </header>
+      <div className="ai-cols">
+        <div>
+          <p className="ai-desc">{ai.plan.description}</p>
+          <p className="muted ai-why"><strong>Why:</strong> {ai.plan.justification}</p>
+          <button type="button" className="btn-secondary" onClick={onApply}>Apply plan to the sliders</button>
+        </div>
+        <div>
+          <table className="tbl">
+            <thead><tr><th scope="col">Runway</th><th scope="col" className="r">Months</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Before</th><td className="r num">{months(ai.baseline)}</td></tr>
+              <tr><th scope="row">After the event</th><td className="r num">{months(ai.impact.result)}</td></tr>
+              <tr><th scope="row">With the plan</th><td className="r num strong">{months(ai.plan.result)}</td></tr>
+            </tbody>
+          </table>
+          <table className="tbl ai-vars">
+            <thead><tr><th scope="col">Variable</th><th scope="col" className="r">Event</th><th scope="col" className="r">Plan</th></tr></thead>
+            <tbody>
+              {Object.entries(VAR_LABELS).map(([k, [label, fmt]]) => (
+                <tr key={k}><th scope="row">{label}</th><td className="r num">{fmt(imp[k])}</td><td className="r num">{fmt(pv[k])}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="muted small ai-model">Generated by {ai.model}. An estimate, not financial advice.</p>
+    </section>
   )
 }
 

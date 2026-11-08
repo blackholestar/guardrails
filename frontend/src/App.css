@@ -96,11 +96,42 @@ button.link {
 .tip:hover .tip-text,
 .tip:focus .tip-text { display: block; }
 
+.planner { margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; }
+.planner h3 { margin: 1.25rem 0 0.25rem; font-size: 1.1rem; }
+.planner-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  resize: vertical;
+}
+.planner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.5rem 0; }
+.planner-actions button[type='submit'] {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: #f26b1d;
+  color: #fff;
+  cursor: pointer;
+}
+.planner-actions button[type='submit']:disabled { opacity: 0.6; cursor: default; }
+.var-table { border-collapse: collapse; font-size: 0.9rem; margin: 0.5rem 0; }
+.var-table th { text-align: left; font-weight: normal; color: #555; padding: 0.2rem 1.5rem 0.2rem 0; }
+.var-table td { font-weight: 600; }
+.change-value { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.old-value { font-size: 1rem; font-weight: 400; color: #888; }
+.change-delta { font-size: 0.8rem; color: #666; margin-top: 0.15rem; }
+.outcome-detail { font-size: 0.8rem; color: #666; margin-top: 0.25rem; }
+
 details { margin-top: 1.5rem; }
 pre { background: #f6f6f6; padding: 1rem; overflow: auto; font-size: 0.8rem; }
 
 @media (prefers-color-scheme: dark) {
-  .caption, .hint, .metric-label { color: #aaa; }
+  .caption, .hint, .metric-label, .var-table th, .outcome-detail, .change-delta { color: #aaa; }
+  .planner-form textarea { background: #1e1e1e; color: #eee; border-color: #444; }
   .metric { background: #1e1e1e; border-color: #333; }
   .metric-value { color: #f1f1f1; }
   pre { background: #1a1a1a; }
