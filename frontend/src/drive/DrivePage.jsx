@@ -487,7 +487,6 @@ export default function DrivePage({ initialAccount }) {
                 </div>
               </dl>
             )}
-            {ready && meta.flags?.includes('no_bills') && <p className="dv-note">No labelled household bills for this account, so a bill shock has no effect.</p>}
           </section>
 
           {/* runway */}
