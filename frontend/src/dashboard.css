@@ -1,0 +1,122 @@
+/* Guardrails dashboard — app style "achromatic-ledger" (seed 1937108896), type kept from the landing (Switzer).
+   Grid: column 1120px max, 16px gutter; grid-top = 2fr + 1fr, grid-mid and grid-two = 1fr + 1fr. */
+.ds {
+  --ground: #f2f4f7;   /* face: a ledger blue-grey ground */
+  --surface: #ffffff;
+  --border: #e3e6ea;
+  --rule: #eceef1;
+  --text: #111418;
+  --muted: #5f6670;
+  --primary: #111418;
+  --secondary: #e5e5e5;
+  --hue: #d9590b;      /* Tangerine orange, the one chart hue (4.0:1 on white) */
+  --ok: #1f7a3d;
+  --short: #b42318;
+  font-family: 'Switzer', ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px; line-height: 1.45; color: var(--text); background: var(--ground); min-height: 100vh;
+}
+.ds * { box-sizing: border-box; }
+.ds h1, .ds h2, .ds h3, .ds p { margin: 0; }
+.ds .num { font-variant-numeric: tabular-nums; }
+.ds .muted { color: var(--muted); }
+.ds .small { font-size: 13px; }
+.ds .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.ds .ds-col { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+.ds .ds-bar { height: 48px; position: sticky; top: 0; z-index: 5; background: var(--ground); box-shadow: 0 1px 0 var(--border); } /* taste-skill-ignore: 1px rule on the sticky bar when content scrolls under it */
+.ds .ds-bar-in { height: 48px; display: flex; align-items: center; gap: 28px; }
+.ds .ds-logo { font-weight: 600; font-size: 17px; letter-spacing: -0.03em; color: var(--text); text-decoration: none; }
+.ds .ds-nav { display: flex; gap: 4px; }
+.ds .ds-nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; padding: 6px 10px; border-radius: 6px; }
+.ds .ds-nav a:hover { color: var(--text); }
+.ds .ds-nav a[aria-current='page'] { color: var(--text); background: var(--secondary); }
+.ds .ds-scope { margin-left: auto; color: var(--muted); font-size: 13px; }
+.ds a:focus-visible, .ds button:focus-visible, .ds input:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+.ds .ds-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 28px 0 20px; flex-wrap: wrap; }
+.ds .ds-title h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.ds .ds-finding { margin-top: 6px; font-size: 15px; max-width: 70ch; }
+.ds .ds-lookup { display: flex; gap: 8px; }
+.ds .ds-lookup input { width: 120px; height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font: inherit; background: var(--surface); }
+.ds .btn-primary { height: 36px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--primary); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.ds .btn-primary:hover { background: #2a2f36; }
+.ds .btn-primary:active { transform: translateY(1px); }
+.ds .btn-secondary { height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--secondary); color: var(--text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.ds .btn-secondary:hover { background: #d9d9d9; }
+.ds .ds-error { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--short); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+
+.ds .grid-top { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.ds .grid-mid, .ds .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+.ds .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; }
+.ds .card-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.ds .card-h h2 { font-size: 15px; font-weight: 600; }
+.ds .card-h .muted { font-size: 13px; text-align: right; }
+
+.ds .hero-num { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.ds .hero-num .num { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+.ds .rw-sub { color: var(--muted); font-size: 14px; }
+.ds .runway-svg { width: 100%; height: auto; margin-top: 12px; }
+.ds .runway-svg .grid, .ds .months-svg .grid { stroke: var(--rule); stroke-width: 1; }
+.ds .runway-svg .tick, .ds .months-svg .tick { fill: var(--muted); font-size: 12px; }
+.ds .runway-svg .lab, .ds .months-svg .lab { fill: var(--text); font-size: 13px; font-weight: 500; }
+.ds .bar-ink { fill: #c3c8ce; }
+.ds .bar-hue { fill: var(--hue); }
+.ds .runway-svg .mark { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.ds .runway-svg .mark-t { fill: var(--text); font-size: 12px; font-weight: 500; }
+.ds .status { margin-top: 10px; font-weight: 600; font-size: 14px; }
+.ds .status.ok span { color: var(--ok); }
+.ds .status.short span { color: var(--short); }
+
+.ds .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.ds .sl { margin-top: 10px; }
+.ds .sl label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.ds .sl output { color: var(--text); font-weight: 600; }
+.ds .sl input { width: 100%; accent-color: var(--text); height: 24px; }
+
+.ds .tbl { width: 100%; border-collapse: collapse; }
+.ds .tbl th, .ds .tbl td { padding: 9px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+.ds .tbl thead th { font-size: 12px; color: var(--muted); font-weight: 500; }
+.ds .tbl tbody th { font-weight: 400; color: var(--muted); }
+.ds .tbl tr:last-child th, .ds .tbl tr:last-child td { border-bottom: 0; }
+.ds .tbl .r { text-align: right; }
+.ds .tbl tbody tr:hover td, .ds .tbl tbody tr:hover th { background: #fafbfc; }
+.ds .strong { font-weight: 600; }
+.ds .row-t { display: block; font-weight: 500; }
+.ds .row-s { display: block; color: var(--muted); font-size: 13px; }
+.ds .flags { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+
+.ds .plan { margin-top: 16px; margin-bottom: 40px; }
+.ds .plan-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.ds .plan h3 { font-size: 13px; font-weight: 500; color: var(--muted); }
+.ds .plan-num { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin: 4px 0 6px; }
+.ds .plan p:last-child { max-width: 52ch; }
+
+.ds .hbars { display: grid; gap: 10px; }
+.ds .hb { display: grid; grid-template-columns: minmax(150px, 1.3fr) 2fr 60px; align-items: center; gap: 12px; }
+.ds .hb-k { font-size: 13px; }
+.ds .hb-track { height: 14px; background: transparent; }
+.ds .hb-fill { display: block; height: 100%; background: #c3c8ce; border-radius: 0 4px 4px 0; }
+.ds .hb-fill.hue { background: var(--hue); }
+.ds .hb-v { text-align: right; font-weight: 600; }
+.ds .months-svg { width: 100%; height: auto; }
+.ds .line-ink { fill: none; stroke: #9aa1a9; stroke-width: 2; }
+.ds .line-hue { fill: none; stroke: var(--hue); stroke-width: 2; }
+.ds .dot-hue { fill: var(--hue); stroke: #fff; stroke-width: 2; }
+.ds .foot-note { margin: 16px 0 40px; max-width: 90ch; }
+
+.ds .skel { display: grid; gap: 10px; }
+.ds .skel span { height: 14px; background: var(--rule); border-radius: 4px; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .ds .skel span { animation: none; } }
+
+@media (max-width: 860px) {
+  .ds .grid-top, .ds .grid-mid, .ds .grid-two, .ds .plan-cols { grid-template-columns: 1fr; }
+  .ds .ds-scope { display: none; }
+  .ds .hb { grid-template-columns: 1fr 56px; }
+  .ds .hb-track { grid-column: 1 / -1; order: 3; }
+}
+
+.ds .working { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--rule); }
+.ds .working dt { color: var(--muted); font-size: 12px; }
+.ds .working dd { margin: 2px 0 0; font-weight: 600; }
+@media (max-width: 860px) { .ds .working { grid-template-columns: 1fr 1fr; } }
