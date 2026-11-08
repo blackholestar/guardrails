@@ -55,6 +55,18 @@ function describeShock(s) {
 
 // A plan action from the backend (src/actions.py) becomes a guardrail: what the bank switches on,
 // or a step only the customer can take. `save` is how much it narrows the monthly gap.
+const TOOL_TITLE = {
+  set_cash_limit: 'Cash limit lowered',
+  set_card_cap: 'Card spending capped',
+  hold_transfers_over: 'Large transfers held for OK',
+  pause_standing_order: 'Standing order paused',
+  set_balance_alert: 'Low-balance alert set',
+  request_loan_deferral: 'Loan deferral requested',
+  schedule_reserve_transfer: 'Reserve transfer scheduled',
+  notify_customer: 'Customer notified',
+}
+const clock = (t) => new Date(t * 1000).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+
 // The population finding behind each kind of guardrail (validated in findings/README.md).
 const RUNWAY_FINDING = 'Runway predicts trouble: customers with under 3 months of runway were overdrawn the next year 17.7% of the time, against 1.1% with 12+ months. Every month this adds lowers the risk.'
 const FINDING = {
@@ -110,11 +122,6 @@ async function callAgent(accountId, rail, opts = {}) {
   if (!res.ok) throw new Error(`Agent request failed (${res.status})`)
   return res.json()
 }
-
-const fmtArgs = (args) =>
-  Object.entries(args || {})
-    .map(([k, v]) => `${k}: ${typeof v === 'number' ? (k === 'months' ? v : `$${Math.round(v).toLocaleString('en-CA')}`) : v}`)
-    .join(', ')
 
 function openStory() {
   window.location.hash = '#/'
@@ -212,7 +219,24 @@ export default function DrivePage({ initialAccount }) {
   }, [])
   // payments made in the demo stores, which the Guardian reviewed (polled from the customer sandbox)
   const { state: shopper } = useCustomer(profile?.id)
-  const payments = [...(shopper?.purchases || [])].reverse()
+  const events = [
+    ...agentLog.map((e) => ({
+      key: e.key,
+      t: Number(String(e.key).split('-')[0]) / 1000,
+      title: TOOL_TITLE[e.tool] || e.tool.replace(/_/g, ' '),
+      detail: e.status === 'refused' ? `Refused: ${e.detail}` : e.detail,
+      tag: e.status === 'refused' ? 'Refused' : 'Applied',
+      tone: e.status === 'refused' ? 'bad' : 'ok',
+    })),
+    ...(shopper?.purchases || []).map((p) => ({
+      key: `p-${p.id}-${p.t}`,
+      t: p.t,
+      title: `Payment reviewed · ${p.merchant} · ${money(p.amount)}${p.paypal ? ' via PayPal' : ''}`,
+      detail: p.limit || p.reason,
+      tag: p.overspend ? 'Overspending' : p.necessary ? 'Necessary' : 'Small extra',
+      tone: p.overspend ? 'warn' : 'ok',
+    })),
+  ].sort((x, y) => x.t - y.t)
   const hasShock =
     shock.income_multiplier !== 1 || shock.bills_pct !== 0 || shock.one_off_cost !== 0 || shock.extra_monthly !== 0
 
@@ -267,7 +291,7 @@ export default function DrivePage({ initialAccount }) {
       const d = await callAgent(c.id, x, { ...(turningOn ? opts : { undo: true }), shock })
       const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
       const real = entries.filter((e) => !e.simulated)
-      if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...real.reverse(), ...l].slice(0, 14))
+      if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...l, ...real].slice(-20))
       const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
       if (turningOn && applied) setOn((o) => ({ ...o, [x.id]: true }))
       if (!turningOn) setOn((o) => ({ ...o, [x.id]: false }))
@@ -611,60 +635,49 @@ export default function DrivePage({ initialAccount }) {
                     </li>
                   ))}
                 </ul>
-                <div className="dv-agent">
-                  <div className="dv-agent-head">
-                    <p className="dv-agent-title">Guardian agent activity <span className="dv-who">sandbox account · every tool call is rule-checked</span></p>
-                    <span className="dv-shops">
-                      Shop as this customer:
-                      <a className="dv-actas" href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket →</a>
-                      <a className="dv-actas" href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt →</a>
-                    </span>
+                <section className="dv-activity" aria-labelledby="c-activity">
+                  <div className="dv-activity-head">
+                    <h3 id="c-activity" className="dv-activity-title">Agent activity</h3>
+                    <p className="dv-activity-shops">
+                      Shop as this customer:{' '}
+                      <a href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket</a>
+                      {' · '}
+                      <a href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt</a>
+                    </p>
                   </div>
-                  {payments.length > 0 && (
-                    <>
-                      <p className="dv-agent-sub">Payments it reviewed</p>
-                      <ol className="dv-agent-log">
-                        {payments.map((p) => {
-                          const st = p.status === 'held' ? 'held' : p.overspend ? 'refused' : 'applied'
-                          const label = p.status === 'held' ? 'On hold' : p.overspend ? 'Overspending' : p.necessary ? 'Necessary spending' : 'Not necessary, but small'
-                          return (
-                            <li key={p.id} className={`is-${st}`}>
-                              <span className="dv-agent-mark" aria-hidden="true">{st === 'applied' ? '✓' : st === 'held' ? '⏸' : '!'}</span>
-                              <code>review_payment({p.merchant}, {money(p.amount)}{p.paypal ? ', PayPal' : ''})</code>
-                              <span className="dv-agent-detail">{label}: {p.limit || p.reason}{p.overspend ? ' Paid; the customer got a heads-up.' : ''}</span>
-                            </li>
-                          )
-                        })}
-                      </ol>
-                      <p className="dv-agent-sub">Guardrails it set</p>
-                    </>
-                  )}
-                  {agentLog.length === 0 ? (
-                    <p className="dv-placeholder">Click a guardrail. The agent carries it out with tools, and you&rsquo;ll see each call here.</p>
+                  {events.length === 0 ? (
+                    <p className="dv-activity-empty">Nothing yet. Switch on a guardrail above, or shop as this customer, and each step lands here.</p>
                   ) : (
-                    <ol className="dv-agent-log">
-                      {agentLog.map((e) => (
-                        <li key={e.key} className={`is-${e.status}`}>
-                          <span className="dv-agent-mark" aria-hidden="true">{e.status === 'applied' ? '✓' : '✗'}</span>
-                          <code>{e.tool}({fmtArgs(e.args)})</code>
-                          <span className="dv-agent-detail">
-                            {e.status === 'refused' ? 'Refused: ' : ''}
-                            {e.detail}
-                          </span>
-                          {e.source && e.source !== 'gemini' && e.source !== 'customer' ? <span className="dv-who">{e.source}</span> : null}
+                    <ol className="dv-feed">
+                      {events.map((e) => (
+                        <li key={e.key} className={`dv-ev tone-${e.tone}`}>
+                          <time className="dv-ev-time">{clock(e.t)}</time>
+                          <div className="dv-ev-body">
+                            <p className="dv-ev-title">{e.title}</p>
+                            <p className="dv-ev-detail">{e.detail}</p>
+                          </div>
+                          <span className="dv-ev-tag">{e.tag}</span>
                         </li>
                       ))}
                     </ol>
                   )}
+                </section>
+
+                <div className="dv-result">
+                  <div>
+                    <p className="dv-result-label">Runway with guardrails on</p>
+                    <p className="dv-result-num">
+                      <span className="dv-result-from">{r.shocked.label}</span>
+                      <span aria-hidden="true">→</span>
+                      <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>
+                    </p>
+                  </div>
+                  <p className="dv-result-note">
+                    {anyGuard
+                      ? 'Switched on with the customer’s OK. Rent and bills always go through.'
+                      : 'Each guardrail is an action the bank carries out, with the customer’s OK.'}
+                  </p>
                 </div>
-                <p className="dv-rails-total">
-                  Runway with these guardrails: <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>, up from {r.shocked.label}
-                </p>
-                <p className="dv-src">
-                  {anyGuard
-                    ? 'Switched on with the customer’s OK. Rent and bills always go through.'
-                    : 'Click a guardrail to switch it on. Each one is an action the bank carries out, with the customer’s OK.'}
-                </p>
               </>
             )}
           </section>
