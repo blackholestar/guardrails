@@ -594,7 +594,11 @@ export default function DrivePage({ initialAccount }) {
                 <div className="dv-agent">
                   <div className="dv-agent-head">
                     <p className="dv-agent-title">Guardian agent activity <span className="dv-who">sandbox account · every tool call is rule-checked</span></p>
-                    <a className="dv-actas" href={`#/customer?account=${c.id}`} target="_blank" rel="noreferrer">Act as this customer →</a>
+                    <span className="dv-shops">
+                      Shop as this customer:
+                      <a className="dv-actas" href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket →</a>
+                      <a className="dv-actas" href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt →</a>
+                    </span>
                     <button type="button" className="dv-adjust" disabled={!!pending || !rails.length} onClick={() => toggleRail(rails.find((x) => on[x.id]) || rails[0], { simulate_attack: true })}>
                       Test the safety rules
                     </button>

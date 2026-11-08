@@ -89,7 +89,9 @@ export default function ShopPage({ store: storeKey, account }) {
     <div className={`sh sh-${store.theme}`}>
       <div className="sh-demo">
         Demo store to illustrate the agent · paying as customer {id} with the sandbox card ·{' '}
-        <a href={`#/customer?account=${id}`}>Back to the account</a>
+        <a href={`#/shop/${storeKey === 'volt' ? 'fresh-basket' : 'volt'}?account=${id}`}>
+          Go to {storeKey === 'volt' ? 'Fresh Basket' : 'Volt'}
+        </a>
       </div>
       <header className="sh-head">
         <p className="sh-logo">{store.name}</p>
