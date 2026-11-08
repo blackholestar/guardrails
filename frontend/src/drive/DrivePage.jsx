@@ -699,6 +699,12 @@ export default function DrivePage({ initialAccount }) {
         </div>
       </main>
 
+      {/* first visit: dim the empty dashboard and point at the console */}
+      <div className={`dv-intro${ready || busy ? ' is-gone' : ''}`} aria-hidden={ready || busy ? true : undefined}>
+        <p className="dv-intro-title">Enter an account number and press Go</p>
+        <p className="dv-intro-sub">Any of the 4,500 accounts. Add a twist card if you have one.</p>
+      </div>
+
       {/* the console */}
       <form className={`dv-console${r ? ' is-live' : ''}`} onSubmit={go} noValidate>
         <div className="dv-row">

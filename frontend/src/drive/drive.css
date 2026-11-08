@@ -412,3 +412,15 @@
 .dx-text h3 { margin: 0 0 6px; font-size: 1.0625rem; font-weight: 600; }
 .dx-text p { margin: 0 0 14px; font-size: 1rem; line-height: 1.55; max-width: 62ch; }
 @media (max-width: 900px) { .dx-grid, .dx-text { grid-template-columns: 1fr; } .dx { padding: 20px; } }
+
+/* first visit: a grey veil over the empty dashboard, gone once an account loads */
+.dv-intro {
+  position: fixed; inset: 0; z-index: 3; display: grid; place-content: center; text-align: center; gap: 10px;
+  padding: 0 var(--m) 120px; background: rgb(32 35 38 / 0.42); backdrop-filter: grayscale(1) blur(1.5px);
+  -webkit-backdrop-filter: grayscale(1) blur(1.5px); pointer-events: none;
+  transition: opacity 500ms var(--ease), visibility 0s linear 0s;
+}
+.dv-intro.is-gone { opacity: 0; visibility: hidden; transition: opacity 500ms var(--ease), visibility 0s linear 500ms; }
+.dv-intro-title { margin: 0; color: #fff; font-size: clamp(1.75rem, 1.1rem + 2vw, 3rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.05; }
+.dv-intro-sub { margin: 0; color: #e3e6e8; font-size: 1.0625rem; }
+@media (prefers-reduced-motion: reduce) { .dv-intro, .dv-intro.is-gone { transition: none; } }
