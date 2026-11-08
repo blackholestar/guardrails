@@ -114,3 +114,35 @@ def account(
         return get_account(account_id, shock)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+
+# ---------- Guardian agent (feature/agent) ----------
+from . import agent  # noqa: E402
+
+GuardrailKind = Literal[
+    "cash_limit", "card_cap", "transfer_hold", "standing_order", "balance_alert", "loan_deferral", "reserve", "customer_step",
+]
+
+
+class Guardrail(BaseModel):
+    id: str = Field(max_length=40)
+    kind: GuardrailKind
+    label: str = Field(max_length=200)
+    amount: float = Field(0, ge=0)
+
+
+class AgentRequest(BaseModel):
+    account_id: int
+    guardrail: Guardrail
+    instruction: str | None = Field(None, max_length=500)  # extra request, e.g. the "try to break it" demo
+    undo: bool = False
+    simulate_attack: bool = False  # demo: inject forbidden tool calls to show the rule checker refusing them
+
+
+@app.post("/api/agent/apply")
+def agent_apply(req: AgentRequest):
+    """The Guardian carries out (or undoes) one approved guardrail on the sandbox account; every tool call is rule-checked."""
+    g = req.guardrail.model_dump()
+    if req.undo:
+        return agent.undo_guardrail(req.account_id, g)
+    return agent.apply_guardrail(req.account_id, g, req.instruction, req.simulate_attack)

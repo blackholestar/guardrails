@@ -72,8 +72,36 @@ function railFromAction(a, i) {
     income: [`Extra income goal (${amt} a month)`, 'Customer step'],
   }
   const [label, who] = map[a.category] || [a.title, 'Customer step']
-  return { id: `a${i}`, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
+  const kind =
+    {
+      cash_withdrawals: 'cash_limit',
+      card_spending: 'card_cap',
+      transfers_out: a.kind === 'change_commitment' ? 'standing_order' : 'transfer_hold',
+      bank_fees: 'balance_alert',
+      loan_payment: 'loan_deferral',
+    }[a.category] || 'customer_step'
+  return { id: `a${i}`, kind, amount: a.monthly_amount, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
 }
+
+// The Guardian agent (src/agent.py): carries out one approved guardrail with rule-checked tool calls.
+async function callAgent(accountId, rail, opts = {}) {
+  const res = await fetch('/api/agent/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      account_id: Number(accountId),
+      guardrail: { id: rail.id, kind: rail.kind, label: rail.label.slice(0, 200), amount: rail.amount || 0 },
+      ...opts,
+    }),
+  })
+  if (!res.ok) throw new Error(`Agent request failed (${res.status})`)
+  return res.json()
+}
+
+const fmtArgs = (args) =>
+  Object.entries(args || {})
+    .map(([k, v]) => `${k}: ${typeof v === 'number' ? (k === 'months' ? v : `$${Math.round(v).toLocaleString('en-CA')}`) : v}`)
+    .join(', ')
 
 function openStory() {
   window.location.hash = '#/'
@@ -157,6 +185,8 @@ export default function DrivePage({ initialAccount }) {
   const [source, setSource] = useState(null) // 'ai' | 'rules' | 'preset' | 'manual'
   const [plan, setPlan] = useState(null)
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
+  const [agentLog, setAgentLog] = useState([]) // the Guardian's tool calls, newest first
+  const [pending, setPending] = useState('') // guardrail id the agent is working on
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
@@ -174,8 +204,9 @@ export default function DrivePage({ initialAccount }) {
       return plan.actions.filter((a) => a.status !== 'rejected' && a.monthly_amount > 0.5).map(railFromAction)
     }
     const out = []
-    if (c.P > 0) out.push({ id: 'loan', label: `Loan deferral request: pause the ${money(c.P)} payment`, who: 'Bank sends, lender approves', save: c.P })
-    out.push({ id: 'cash', label: 'Lower the cash limit by $300 a month', who: 'Bank, automatic', save: 300 })
+    if (c.P > 0)
+      out.push({ id: 'loan', kind: 'loan_deferral', amount: c.P, label: `Loan deferral request: pause the ${money(c.P)} payment`, who: 'Bank sends, lender approves', save: c.P })
+    out.push({ id: 'cash', kind: 'cash_limit', amount: 300, label: 'Lower the cash limit by $300 a month', who: 'Bank, automatic', save: 300 })
     return out
   }, [c, plan])
 
@@ -208,6 +239,29 @@ export default function DrivePage({ initialAccount }) {
   }, [railKey])
   const nextRail = rails.find((x) => !on[x.id])?.id
 
+  async function toggleRail(x, opts = {}) {
+    if (pending) return
+    const turningOn = opts.simulate_attack ? true : !on[x.id]
+    setPending(x.id)
+    try {
+      const d = await callAgent(c.id, x, turningOn ? opts : { undo: true })
+      const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
+      setAgentLog((l) => [...entries.reverse(), ...l].slice(0, 14))
+      const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
+      if (turningOn && applied) setOn((o) => ({ ...o, [x.id]: true }))
+      if (!turningOn) setOn((o) => ({ ...o, [x.id]: false }))
+    } catch {
+      // agent unreachable: apply the setting locally and say so
+      setAgentLog((l) => [
+        { key: `${Date.now()}`, tool: turningOn ? 'apply' : 'undo', args: {}, status: 'applied', detail: `${x.label} (agent unreachable, applied directly)`, rail: x.label, source: 'local' },
+        ...l,
+      ])
+      setOn((o) => ({ ...o, [x.id]: turningOn }))
+    } finally {
+      setPending('')
+    }
+  }
+
   const steel = r ? (hasShock ? r.shocked : r.base) : null
   const shownMonths = useCountUp(final ? Math.min(final.months, 120) : null)
   const bigLabel = !final ? '' : final.noShortfall || final.months >= 120 ? '120+' : shownMonths.toFixed(1)
@@ -225,6 +279,7 @@ export default function DrivePage({ initialAccount }) {
       setPlan(null)
       setReadTwist('')
       setOn({})
+      setAgentLog([])
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -516,7 +571,8 @@ export default function DrivePage({ initialAccount }) {
                 <ul className="dv-rails">
                   {rails.map((x) => (
                     <li key={x.id} className="dv-rail">
-                      <button type="button" className={`dv-guard${x.id === nextRail && !anyGuard ? ' is-next' : x.id === nextRail ? ' is-next is-soft' : ''}`} aria-pressed={!!on[x.id]} onClick={() => setOn((o) => ({ ...o, [x.id]: !o[x.id] }))}>
+                      <button type="button" className={`dv-guard${x.id === nextRail && !anyGuard ? ' is-next' : x.id === nextRail ? ' is-next is-soft' : ''}`} aria-pressed={!!on[x.id]} aria-busy={pending === x.id} disabled={!!pending} onClick={() => toggleRail(x)}>
+                        {pending === x.id ? <span className="dv-spin" aria-hidden="true" /> : null}
                         {x.label}
                         <span className="dv-gain">+{r.alone[x.id].toFixed(1)} mo</span>
                       </button>
@@ -531,6 +587,32 @@ export default function DrivePage({ initialAccount }) {
                     </li>
                   ))}
                 </ul>
+                <div className="dv-agent">
+                  <div className="dv-agent-head">
+                    <p className="dv-agent-title">Guardian agent activity <span className="dv-who">sandbox account · every tool call is rule-checked</span></p>
+                    <button type="button" className="dv-adjust" disabled={!!pending || !rails.length} onClick={() => toggleRail(rails.find((x) => on[x.id]) || rails[0], { simulate_attack: true })}>
+                      Simulate a manipulated agent
+                    </button>
+                  </div>
+                  {agentLog.length === 0 ? (
+                    <p className="dv-placeholder">Click a guardrail. The agent carries it out with tools, and you&rsquo;ll see each call here.</p>
+                  ) : (
+                    <ol className="dv-agent-log">
+                      {agentLog.map((e) => (
+                        <li key={e.key} className={`is-${e.status}`}>
+                          <span className="dv-agent-mark" aria-hidden="true">{e.status === 'applied' ? '✓' : '✗'}</span>
+                          <code>{e.tool}({fmtArgs(e.args)})</code>
+                          <span className="dv-agent-detail">
+                            {e.status === 'refused' ? 'Refused: ' : ''}
+                            {e.detail}
+                            {e.simulated ? ' (simulated attack)' : ''}
+                          </span>
+                          {e.source && e.source !== 'gemini' && e.source !== 'customer' ? <span className="dv-who">{e.source}</span> : null}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
                 <p className="dv-rails-total">
                   Runway with these guardrails: <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>, up from {r.shocked.label}
                 </p>

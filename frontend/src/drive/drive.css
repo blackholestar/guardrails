@@ -262,3 +262,20 @@
 @keyframes dv-radiate { 0% { box-shadow: 0 0 0 0 rgb(239 106 26 / 0.55); } 100% { box-shadow: 0 0 0 16px rgb(239 106 26 / 0); } }
 @media (prefers-reduced-motion: reduce) { .dv-guard.is-next::after { animation: none; } }
 
+
+/* Guardian agent activity */
+.dv-agent { margin-top: 18px; padding: 14px 16px; background: #1f2326; color: var(--paint); }
+.dv-agent-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.dv-agent-title { margin: 0; font-weight: 600; font-size: 0.9375rem; }
+.dv-agent .dv-who { color: #a9b1b6; margin-left: 6px; }
+.dv-agent .dv-adjust { color: var(--paint); }
+.dv-agent .dv-adjust:disabled { opacity: 0.5; cursor: progress; }
+.dv-agent .dv-placeholder { color: #c9ced1; margin-top: 10px; }
+.dv-agent-log { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.875rem; }
+.dv-agent-log li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; animation: dv-in 400ms var(--ease) both; }
+.dv-agent-log code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.8125rem; color: #ffd2b5; }
+.dv-agent-mark { width: 1em; font-weight: 700; }
+.is-applied .dv-agent-mark { color: #7fd29a; }
+.is-refused .dv-agent-mark { color: #ff8a73; }
+.is-refused .dv-agent-detail { color: #ffb4a6; }
+.dv-card-rails .dv-guard:disabled { cursor: progress; }
