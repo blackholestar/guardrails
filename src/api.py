@@ -2,13 +2,15 @@
 
 All logic lives in src/service.py and src/engine.py; this file only exposes it over HTTP.
 """
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import ai
 from .glossary import FLAG_TEXT, GLOSSARY
-from .service import get_account, list_account_ids, plan_scenario
+from .service import MAX_TURNS, BadConversation, follow_up, get_account, list_account_ids, plan_scenario
 
 app = FastAPI(title="Resilience Rewired API")
 
@@ -60,6 +62,30 @@ def ai_plan(req: PlanRequest):
         raise HTTPException(status_code=503, detail=str(e))
 
 
+class Turn(BaseModel):
+    role: Literal["user", "model"]
+    text: str = Field(min_length=1, max_length=30_000)  # model turns are plan JSON, so they can be long
+
+
+class FollowUpRequest(BaseModel):
+    account_id: int
+    history: list[Turn] = Field(min_length=2, max_length=MAX_TURNS)
+    message: str = Field(min_length=1, max_length=2000)
+
+
+@app.post("/api/ai/followup")
+def ai_followup(req: FollowUpRequest):
+    """A follow-up message about a plan. The AI replies, and may return a revised plan that the engine scores."""
+    try:
+        return follow_up(req.account_id, [t.model_dump() for t in req.history], req.message)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {req.account_id} not found")
+    except BadConversation as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except ai.AIUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
 @app.get("/api/accounts")
 def accounts(limit: int = Query(5, ge=1, le=100)):
     ids = list_account_ids()
@@ -74,6 +100,7 @@ def account(
     bills_pct: float = Query(0.0, ge=-1),
     one_off_cost: float = Query(0.0, ge=0),
     extra_monthly: float = Query(0.0),
+    extra_income: float = Query(0.0, ge=0),
 ):
     shock = {
         "income_multiplier": income_multiplier,
@@ -81,6 +108,7 @@ def account(
         "bills_pct": bills_pct,
         "one_off_cost": one_off_cost,
         "extra_monthly": extra_monthly,
+        "extra_income": extra_income,
     }
     try:
         return get_account(account_id, shock)

@@ -12,7 +12,7 @@ Judging: Discovery 35%, Data Use 25%, Communication 25%, Impact 15%.
 Demo format: 1 min pitch, 3 min live twist on a judge-chosen account, 1 min questions.
 
 ## Design principles
-- **The engine is deterministic code.** Gemini never calculates; it only explains results and (optionally) parses a typed twist card into shock parameters.
+- **The engine is deterministic code.** Gemini never calculates. For a typed scenario it picks the event's shock variables and an itemized plan (category, monthly amount, steps, evidence). Code checks each amount against the account's records, works out its exact change to I, F, S, H and P, and the engine computes gap and runway.
 - **Use the judges' definitions exactly** for the headline numbers (I, F, S, B, H, P, runway). Anything extra is shown separately and labelled.
 - **Fallbacks for the live demo:** preset shock buttons and cached narratives if the API or network fails.
 
@@ -33,9 +33,14 @@ Demo format: 1 min pitch, 3 min live twist on a judge-chosen account, 1 min ques
 data/                    given data (CSVs + challenge brief)
 src/
   features.py            builds per-account feature table (I, F, S, B, H, P, ...)
+  details.py             per-account detail cache for the AI plan (12-month categories, standing orders,
+                         loan terms, recurring payees/payers, cash habits) -> cache/details/
+  summary.py             plain-text account summary sent to Gemini, with ref ids actions can cite
+  actions.py             checks Gemini's plan actions, caps amounts, maps them to metric changes
+  guidance.py            loads docs/insights/*.md and docs/guides/*.md into the prompt
   engine.py              compute(account_id, shock) -> results
-  plan.py                emergency-fund goal + backup plan
-  ai.py                  Gemini narrative + twist-card parser
+  plan.py                emergency-fund goal + backup plan (not built)
+  ai.py                  Gemini client, plan prompt and response schema
   service.py             UI-agnostic layer returning JSON-safe dicts
   api.py                 FastAPI routes (/api/accounts/{id}, /api/glossary, ...)
   glossary.py            plain-language tooltip text and warning messages (served by the API)
@@ -45,7 +50,9 @@ frontend/                React app (Vite)
   vite.config.js         proxies /api to the backend on port 8000
 notebooks/               exploration scripts (explore_vulnerability.py, explore_levers.py)
 docs/DATA_INSIGHTS.md    what the data contains and what it says about vulnerability
-tests/                   test_engine.py (formulas, features vs raw CSV), test_api.py (HTTP endpoints)
+docs/insights/           population findings added to the AI prompt (drop in .md files; see its README)
+docs/guides/             sourced Canadian guidance added to the AI prompt (empty for now)
+tests/                   engine, details/summary, actions, AI (faked Gemini) and API tests
 cache/                   derived Parquet (git-ignored)
 ```
 
@@ -59,11 +66,13 @@ uv venv                                  # creates .venv (answer y if it asks to
 source .venv/bin/activate
 uv pip install -r requirements.txt
 
-# 2. Optional: Gemini key (only needed for the AI layer, not built yet)
-cp .env.example .env                     # then set GEMINI_API_KEY
+# 2. Gemini key (needed for "What if…?" plans)
+cp .env.example .env                     # then set GEMINI_API_KEY and GEMINI_MODEL
 
-# 3. Build the per-account feature table (about 10 seconds; also auto-builds on first app run)
+# 3. Build the caches (a few seconds each; both also auto-build on first use)
 python -m src.features                   # writes cache/features.parquet
+python -m src.details                    # writes cache/details/*.parquet; rebuild after changing src/details.py
+python -m src.summary 20134              # prints exactly what Gemini sees for an account
 
 # 4. Install frontend dependencies (one time; needs Node 20+)
 cd frontend && npm install && cd ..
@@ -78,13 +87,16 @@ pytest -q
 # 7. Re-run the data exploration (about 1 minute; reads the 100 MB transactions file)
 python notebooks/explore_vulnerability.py
 python notebooks/explore_levers.py
+
+# 8. Live AI plan check (calls real Gemini; 18 requests). Saves to cache/eval/<prompt version>/
+python -m notebooks.eval_plans
 ```
 
 Without activating the venv, prefix Python commands with `.venv/bin/`, e.g. `.venv/bin/uvicorn src.api:app --port 8000`.
 The frontend calls `/api/...`, which Vite proxies to port 8000, so the backend must be running.
 Try account IDs 20134 (has bills and a loan), 20111 (no labelled bills) or 20133.
 
-Current status: the account lookup page works (enter an account ID, see I, F, S, B, H, P, gap, runway, with hover tooltips). The API already accepts shock parameters; the shock panel UI, plan and AI layer are not built yet.
+Current status: the account lookup page works (I, F, S, B, H, P, gap, runway, with hover tooltips). "What if…?" takes a typed scenario and returns an itemized plan from Gemini grounded in the account's own records (`POST /api/ai/plan`). Each step shows its checked monthly amount and exact change to each metric; the page shows runway before, after the event, and with the plan. Under the plan, the customer can keep talking to the AI (`POST /api/ai/followup`): questions get a reply only; requested changes get a complete revised plan, checked and scored like the first, shown with its own 8 metric cards and a runway comparison with the previous plan. The server is stateless: the browser sends the conversation back each turn, and the server re-checks the plan in effect. Not built yet: the goal/backup plan in `plan.py`, and a fallback when Gemini is unavailable.
 
 ## Plan
 
@@ -107,8 +119,8 @@ Current status: the account lookup page works (enter an account ID, see I, F, S,
 - [ ] Demo video (2 to 3 min), write-up, sources, repo cleanup.
 
 ### Stretch (only if time)
-- [ ] `standing_orders.csv` for committed vs flexible costs.
-- [ ] Transaction-based income regularity and recurring-payment detection.
+- [x] `standing_orders.csv` for committed vs flexible costs.
+- [x] Transaction-based income regularity and recurring-payment detection.
 
 ## Headline finding options (decide after exploration)
 - **Portfolio stress test:** share of 4,500 accounts that survive a 6-month EI spell, by region/age.

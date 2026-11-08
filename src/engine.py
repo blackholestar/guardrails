@@ -25,11 +25,15 @@ class Shock:
     bills_pct: float = 0.0            # e.g. 0.15 for +15% household bills
     one_off_cost: float = 0.0         # e.g. a repair
     extra_monthly: float = 0.0        # any other added monthly cost (e.g. higher rent beyond H)
+    extra_income: float = 0.0         # added monthly income in dollars (e.g. part-time work); 0 = judges' formula
 
 
 def runway(B: float, I: float, S: float, H: float, shock: Shock) -> dict:
-    """Judge-compatible runway for given base numbers and a shock."""
-    income = shock.income_multiplier * I
+    """Judge-compatible runway for given base numbers and a shock.
+
+    With extra_income = 0 (the default) this is exactly the judges' formula.
+    """
+    income = shock.income_multiplier * I + shock.extra_income
     spending = S + shock.bills_pct * H + shock.extra_monthly
     buffer_left = B - shock.one_off_cost
     gap = spending - income

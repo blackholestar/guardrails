@@ -105,6 +105,20 @@ def test_makes_it_depends_on_duration():
     assert runway(B, I, S, H, Shock(income_multiplier=0.55, income_months=12))["makes_it"] is False
 
 
+def test_extra_income_reduces_gap():
+    # income = 0.55*5000 + 500 = 3250; gap = 1250; 20000 / 1250 = 16.0
+    r = runway(B, I, S, H, Shock(income_multiplier=0.55, extra_income=500))
+    assert r["income_after"] == pytest.approx(3250)
+    assert r["gap"] == pytest.approx(1250)
+    assert r["runway_months"] == 16.0
+
+
+def test_extra_income_with_zero_base_income():
+    # income = 0 + 1000; gap = 3500; 20000 / 3500 = 5.714 -> 5.7
+    r = runway(B, 0, S, H, Shock(extra_income=1000))
+    assert r["runway_months"] == 5.7
+
+
 def test_makes_it_absent_without_duration():
     assert "makes_it" not in runway(B, I, S, H, Shock(income_multiplier=0.55))
 
