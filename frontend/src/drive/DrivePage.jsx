@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAccount, planScenario } from '../api'
 import { runway, money } from '../runway'
+import { useCustomer } from '../customer/customerApi'
+import { RailExplain } from './RailExplain'
 import ACCOUNT_IDS from '../data/account_ids.json'
 import './drive.css'
 
@@ -54,6 +56,19 @@ function describeShock(s) {
 
 // A plan action from the backend (src/actions.py) becomes a guardrail: what the bank switches on,
 // or a step only the customer can take. `save` is how much it narrows the monthly gap.
+const TOOL_TITLE = {
+  set_cash_limit: 'Cash limit lowered',
+  set_card_cap: 'Card spending capped',
+  hold_transfers_over: 'Large transfers held for OK',
+  pause_standing_order: 'Standing order paused',
+  set_balance_alert: 'Low-balance alert set',
+  request_loan_deferral: 'Loan deferral requested',
+  schedule_reserve_transfer: 'Reserve transfer scheduled',
+  notify_customer: 'Customer notified',
+}
+const clock = (t) => new Date(t * 1000).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+
+
 function railFromAction(a, i) {
   const amt = money(a.monthly_amount)
   const m = a.metric_changes || {}
@@ -72,7 +87,30 @@ function railFromAction(a, i) {
     income: [`Extra income goal (${amt} a month)`, 'Customer step'],
   }
   const [label, who] = map[a.category] || [a.title, 'Customer step']
-  return { id: `a${i}`, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
+  const kind =
+    {
+      cash_withdrawals: 'cash_limit',
+      card_spending: 'card_cap',
+      transfers_out: a.kind === 'change_commitment' ? 'standing_order' : 'transfer_hold',
+      bank_fees: 'balance_alert',
+      loan_payment: 'loan_deferral',
+    }[a.category] || 'customer_step'
+  return { id: `a${i}`, kind, amount: a.monthly_amount, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
+}
+
+// The Guardian agent (src/agent.py): carries out one approved guardrail with rule-checked tool calls.
+async function callAgent(accountId, rail, opts = {}) {
+  const res = await fetch('/api/agent/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      account_id: Number(accountId),
+      guardrail: { id: rail.id, kind: rail.kind, label: rail.label.slice(0, 200), amount: rail.amount || 0 },
+      ...opts,
+    }),
+  })
+  if (!res.ok) throw new Error(`Agent request failed (${res.status})`)
+  return res.json()
 }
 
 function openStory() {
@@ -157,12 +195,41 @@ export default function DrivePage({ initialAccount }) {
   const [source, setSource] = useState(null) // 'ai' | 'rules' | 'preset' | 'manual'
   const [plan, setPlan] = useState(null)
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
+  const [explain, setExplain] = useState(null) // id of the guardrail whose "why" is open
+  const [agentLog, setAgentLog] = useState([]) // the Guardian's tool calls, newest first
+  const [pending, setPending] = useState('') // guardrail id the agent is working on
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
 
   // ---------- numbers (judges' formula) ----------
   const c = profile
+  useEffect(() => {
+    document.documentElement.classList.add('dv-root')
+    return () => document.documentElement.classList.remove('dv-root')
+  }, [])
+  // payments made in the demo stores, which the Guardian reviewed (polled from the customer sandbox)
+  const { state: shopper } = useCustomer(profile?.id)
+  const events = [
+    ...agentLog.map((e) => ({
+      key: e.key,
+      t: Number(String(e.key).split('-')[0]) / 1000,
+      title: e.undo ? `Undone: ${e.rail}` : TOOL_TITLE[e.tool] || e.tool.replace(/_/g, ' '),
+      detail: e.status === 'refused' ? `Refused: ${e.detail}` : e.undo ? 'Switched off by the customer. The account is back to its normal limits.' : e.detail,
+      tag: e.status === 'refused' ? 'Refused' : e.undo ? 'Undone' : 'Guardrail on',
+      tone: e.status === 'refused' ? 'bad' : e.undo ? 'muted' : 'add',
+      mark: e.status === 'refused' ? '×' : e.undo ? '↺' : '+',
+    })),
+    ...(shopper?.purchases || []).map((p) => ({
+      key: `p-${p.id}-${p.t}`,
+      t: p.t,
+      title: `Payment reviewed · ${p.merchant} · ${money(p.amount)}${p.paypal ? ' via PayPal' : ''}`,
+      detail: p.limit || p.reason,
+      tag: p.overspend ? 'Overspending' : p.necessary ? 'Necessary' : 'Small extra',
+      tone: p.overspend ? 'warn' : 'ok',
+      mark: p.overspend ? '!' : '✓',
+    })),
+  ].sort((x, y) => x.t - y.t)
   const hasShock =
     shock.income_multiplier !== 1 || shock.bills_pct !== 0 || shock.one_off_cost !== 0 || shock.extra_monthly !== 0
 
@@ -174,8 +241,9 @@ export default function DrivePage({ initialAccount }) {
       return plan.actions.filter((a) => a.status !== 'rejected' && a.monthly_amount > 0.5).map(railFromAction)
     }
     const out = []
-    if (c.P > 0) out.push({ id: 'loan', label: `Loan deferral request: pause the ${money(c.P)} payment`, who: 'Bank sends, lender approves', save: c.P })
-    out.push({ id: 'cash', label: 'Lower the cash limit by $300 a month', who: 'Bank, automatic', save: 300 })
+    if (c.P > 0)
+      out.push({ id: 'loan', kind: 'loan_deferral', amount: c.P, label: `Loan deferral request: pause the ${money(c.P)} payment`, who: 'Bank sends, lender approves', save: c.P })
+    out.push({ id: 'cash', kind: 'cash_limit', amount: 300, label: 'Lower the cash limit by $300 a month', who: 'Bank, automatic', save: 300 })
     return out
   }, [c, plan])
 
@@ -208,6 +276,38 @@ export default function DrivePage({ initialAccount }) {
   }, [railKey])
   const nextRail = rails.find((x) => !on[x.id])?.id
 
+  const stageRef = useRef(null)
+  function openExplain(id) {
+    setExplain(id)
+    stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const closeExplain = useCallback(() => setExplain(null), [])
+  const explainRail = explain && rails.find((x) => x.id === explain)
+
+  async function toggleRail(x, opts = {}) {
+    if (pending) return
+    const turningOn = opts.simulate_attack ? true : !on[x.id]
+    setPending(x.id)
+    try {
+      const d = await callAgent(c.id, x, { ...(turningOn ? opts : { undo: true }), shock })
+      const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source, undo: !turningOn }))
+      const real = entries.filter((e) => !e.simulated)
+      if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...l, ...real].slice(-20))
+      const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
+      if (turningOn && applied) setOn((o) => ({ ...o, [x.id]: true }))
+      if (!turningOn) setOn((o) => ({ ...o, [x.id]: false }))
+    } catch {
+      // agent unreachable: apply the setting locally and say so
+      setAgentLog((l) => [
+        { key: `${Date.now()}`, tool: turningOn ? 'apply' : 'undo', args: {}, status: 'applied', detail: `${x.label} (agent unreachable, applied directly)`, rail: x.label, source: 'local' },
+        ...l,
+      ])
+      setOn((o) => ({ ...o, [x.id]: turningOn }))
+    } finally {
+      setPending('')
+    }
+  }
+
   const steel = r ? (hasShock ? r.shocked : r.base) : null
   const shownMonths = useCountUp(final ? Math.min(final.months, 120) : null)
   const bigLabel = !final ? '' : final.noShortfall || final.months >= 120 ? '120+' : shownMonths.toFixed(1)
@@ -225,6 +325,9 @@ export default function DrivePage({ initialAccount }) {
       setPlan(null)
       setReadTwist('')
       setOn({})
+      setAgentLog([])
+      // start the sandbox fresh too: no payments or limits from an earlier run
+      fetch(`/api/customer/${d.account_id}/reset`, { method: 'POST' }).catch(() => {})
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -320,11 +423,13 @@ export default function DrivePage({ initialAccount }) {
         <a className="dv-mark" href="#/">Guardrails</a>
         <nav className="dv-nav" aria-label="Pages">
           <button type="button" className="dv-navlink" onClick={openStory}>The story</button>
-          <a className="dv-navlink" href={`#/classic${profile ? `?account=${profile.id}` : ''}`}>Classic view</a>
+          <a className="dv-navlink" href="#/findings">Our findings</a>
         </nav>
       </header>
 
       <main className="dv-main">
+        <div ref={stageRef} className={`dv-stage${explainRail ? ' is-explain' : ''}`}>
+        <div className="dv-pane dv-pane-main" inert={explainRail ? true : undefined}>
         <div className="dv-head">
           <h1 className="dv-title">{ready ? `Account ${profile.id}` : 'Runway engine'}</h1>
           <p className="dv-sub">
@@ -382,7 +487,6 @@ export default function DrivePage({ initialAccount }) {
                 </div>
               </dl>
             )}
-            {ready && meta.flags?.includes('no_bills') && <p className="dv-note">No labelled household bills for this account, so a bill shock has no effect.</p>}
           </section>
 
           {/* runway */}
@@ -516,34 +620,89 @@ export default function DrivePage({ initialAccount }) {
                 <ul className="dv-rails">
                   {rails.map((x) => (
                     <li key={x.id} className="dv-rail">
-                      <button type="button" className={`dv-guard${x.id === nextRail && !anyGuard ? ' is-next' : x.id === nextRail ? ' is-next is-soft' : ''}`} aria-pressed={!!on[x.id]} onClick={() => setOn((o) => ({ ...o, [x.id]: !o[x.id] }))}>
+                      <button type="button" className={`dv-guard${x.id === nextRail && !anyGuard ? ' is-next' : x.id === nextRail ? ' is-next is-soft' : ''}`} aria-pressed={!!on[x.id]} aria-busy={pending === x.id} disabled={!!pending} onClick={() => toggleRail(x)}>
+                        {pending === x.id ? <span className="dv-spin" aria-hidden="true" /> : null}
                         {x.label}
                         <span className="dv-gain">+{r.alone[x.id].toFixed(1)} mo</span>
                       </button>
                       <span className="dv-who">{x.who}{x.capped ? ' · capped at what they really spend' : ''}</span>
-                      {x.how && (
-                        <details className="dv-why">
-                          <summary>Why this</summary>
-                          <p>{x.evidence}</p>
-                          <p>{x.how}</p>
-                        </details>
-                      )}
+                      <button type="button" className="dv-whybtn" onClick={() => openExplain(x.id)}>
+                        Why this <span aria-hidden="true">→</span>
+                      </button>
                     </li>
                   ))}
                 </ul>
-                <p className="dv-rails-total">
-                  Runway with these guardrails: <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>, up from {r.shocked.label}
-                </p>
-                <p className="dv-src">
-                  {anyGuard
-                    ? 'Switched on with the customer’s OK. Rent and bills always go through.'
-                    : 'Click a guardrail to switch it on. Each one is an action the bank carries out, with the customer’s OK.'}
-                </p>
+                <div className="dv-result">
+                  <p className="dv-result-label">Runway with these guardrails</p>
+                  <p className="dv-result-num">
+                    <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>
+                    <span className="dv-result-from">from {r.shocked.label} after the shock</span>
+                  </p>
+                  <p className="dv-result-note">
+                    {anyGuard
+                      ? 'Switched on with the customer’s OK. Rent and bills always go through.'
+                      : 'Each guardrail is an action the bank carries out, with the customer’s OK.'}
+                  </p>
+                </div>
               </>
             )}
           </section>
+
+          {/* what the agent did, as it happens */}
+          {ready && hasShock && (
+            <section className="dv-card dv-card-activity" aria-labelledby="c-activity">
+              <div className="dv-activity-head">
+                <h2 id="c-activity" className="dv-label">Agent activity</h2>
+                <p className="dv-activity-shops">
+                  Shop as this customer:{' '}
+                  <a href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket</a>
+                  {' · '}
+                  <a href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt</a>
+                </p>
+              </div>
+              {events.length === 0 ? (
+                <p className="dv-activity-empty">Nothing yet. Switch on a guardrail above, or shop as this customer, and each step lands here.</p>
+              ) : (
+                <ol className="dv-feed">
+                  {events.map((e) => (
+                    <li key={e.key} className={`dv-ev tone-${e.tone}`}>
+                      <span className="dv-ev-dot" aria-hidden="true">{e.mark}</span>
+                      <div className="dv-ev-body">
+                        <p className="dv-ev-title">{e.title}</p>
+                        <p className="dv-ev-detail">{e.detail}</p>
+                      </div>
+                      <div className="dv-ev-side">
+                        <span className="dv-ev-tag">{e.tag}</span>
+                        <time className="dv-ev-time">{clock(e.t)}</time>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          )}
+        </div>
+        </div>
+        <div className="dv-pane dv-pane-explain" inert={explainRail ? undefined : true}>
+          {explainRail && r && (
+            <RailExplain
+              key={explainRail.id}
+              accountId={c.id}
+              rail={explainRail}
+              before={r.shocked.months}
+              after={r.shocked.months + (r.alone[explainRail.id] || 0)}
+              onBack={closeExplain}
+            />
+          )}
+        </div>
         </div>
       </main>
+
+      {/* first visit: dim the empty dashboard and point at the console */}
+      <div className={`dv-intro${ready || busy ? ' is-gone' : ''}`} aria-hidden={ready || busy ? true : undefined}>
+        <p className="dv-intro-title">Enter an account number and press Go</p>
+        <p className="dv-intro-sub">Any of the 4,500 accounts. Add a twist card if you have one.</p>
+      </div>
 
       {/* the console */}
       <form className={`dv-console${r ? ' is-live' : ''}`} onSubmit={go} noValidate>

@@ -114,3 +114,157 @@ def account(
         return get_account(account_id, shock)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+
+# ---------- Guardian agent (feature/agent) ----------
+from . import agent, customer  # noqa: E402
+
+GuardrailKind = Literal[
+    "cash_limit", "card_cap", "transfer_hold", "standing_order", "balance_alert", "loan_deferral", "reserve", "customer_step",
+]
+
+
+class Guardrail(BaseModel):
+    id: str = Field(max_length=40)
+    kind: GuardrailKind
+    label: str = Field(max_length=200)
+    amount: float = Field(0, ge=0)
+
+
+class AgentRequest(BaseModel):
+    account_id: int
+    guardrail: Guardrail
+    instruction: str | None = Field(None, max_length=500)  # extra request, e.g. the "try to break it" demo
+    undo: bool = False
+    simulate_attack: bool = False  # demo: inject forbidden tool calls to show the rule checker refusing them
+    shock: dict | None = None  # the shock in effect on the engine page, so the customer sandbox uses the same runway
+
+
+@app.post("/api/agent/apply")
+def agent_apply(req: AgentRequest):
+    """The Guardian carries out (or undoes) one approved guardrail on the sandbox account; every tool call is rule-checked."""
+    g = req.guardrail.model_dump()
+    if req.shock is not None:
+        customer.set_context(req.account_id, req.shock)
+    if req.undo:
+        return agent.undo_guardrail(req.account_id, g)
+    return agent.apply_guardrail(req.account_id, g, req.instruction, req.simulate_attack)
+
+
+# ---------- Customer sandbox: act as the customer and spend (feature/agent) ----------
+class PurchaseRequest(BaseModel):
+    account_id: int
+    merchant: str = Field(min_length=1, max_length=80)
+    category: str = Field("", max_length=60)
+    amount: float = Field(gt=0, le=1_000_000)
+
+
+class ResolveRequest(BaseModel):
+    account_id: int
+    hold_id: str = Field(max_length=20)
+    approve: bool
+    code: str | None = Field(None, max_length=8)
+
+
+@app.get("/api/customer/{account_id}")
+def customer_state(account_id: int):
+    try:
+        return customer.public_state(account_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+
+@app.post("/api/customer/purchase")
+def customer_purchase(req: PurchaseRequest):
+    """Spend on the sandbox card. Guardrail limits apply, and the agent judges whether it's necessary."""
+    try:
+        return customer.purchase(req.account_id, req.merchant, req.category, req.amount)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {req.account_id} not found")
+
+
+@app.post("/api/customer/resolve")
+def customer_resolve(req: ResolveRequest):
+    """Approve a held purchase with its code, or cancel it."""
+    return customer.resolve(req.account_id, req.hold_id, req.code, req.approve)
+
+
+@app.post("/api/customer/{account_id}/reset")
+def customer_reset(account_id: int):
+    return customer.reset(account_id)
+
+
+# ---------- PayPal sandbox checkout for the demo stores (feature/agent) ----------
+from . import paypal  # noqa: E402
+
+
+class PayPalItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    price: float = Field(gt=0, le=100_000)
+    qty: int = Field(ge=1, le=99)
+
+
+class PayPalOrderRequest(BaseModel):
+    account_id: int
+    store: str = Field(max_length=40)
+    store_name: str = Field(max_length=80)
+    items: list[PayPalItem] = Field(min_length=1, max_length=50)
+
+
+class PayPalApprovedRequest(BaseModel):
+    account_id: int
+    order_id: str = Field(max_length=40)
+    store_name: str = Field(max_length=80)
+    category: str = Field("", max_length=40)
+
+
+@app.get("/api/paypal/config")
+def paypal_config():
+    """The public client ID for the PayPal buttons (never the secret)."""
+    return {"enabled": paypal.enabled(), "client_id": paypal.client_id() if paypal.enabled() else None}
+
+
+@app.post("/api/paypal/order")
+def paypal_order(req: PayPalOrderRequest):
+    if not paypal.enabled():
+        raise HTTPException(status_code=503, detail="PayPal is not configured")
+    return {"id": paypal.create_order(req.store, req.store_name, [i.model_dump() for i in req.items])}
+
+
+@app.post("/api/paypal/approved")
+def paypal_approved(req: PayPalApprovedRequest):
+    """The shopper approved in PayPal. Read the order from PayPal (payee, items, total), let the guardrails
+    judge it, then capture it or hold it uncaptured until the shopper enters the code."""
+    if not paypal.enabled():
+        raise HTTPException(status_code=503, detail="PayPal is not configured")
+    order = paypal.summary(paypal.get_order(req.order_id))
+    if order["status"] != "APPROVED":
+        raise HTTPException(status_code=409, detail=f"Order is {order['status']}, not approved")
+    category = f"{req.category}: {', '.join(order['items'])}"[:60]
+    out = customer.purchase(req.account_id, req.store_name, category, order["amount"], mode="nudge", paypal=order)
+    out["paypal"] = order
+    return out
+
+
+# ---------- The customer's recent months, for the guardrail explainer charts (feature/agent) ----------
+@app.get("/api/history/{account_id}")
+def history(account_id: int, months: int = Query(12, ge=3, le=36)):
+    cols = ["month", "money_in", "money_out", "household_bills", "loan_payments", "bank_fees",
+            "cash_withdrawals_genuine", "card_withdrawals", "transfers_out_other", "min_balance", "avg_daily_balance"]
+    m = _history_frame()
+    rows = m[m["account_id"] == account_id].sort_values("month").tail(months)
+    if rows.empty:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+    return {"account_id": account_id, "months": rows[cols].round(2).to_dict(orient="records")}
+
+
+_HIST = {}
+
+
+def _history_frame():
+    if "m" not in _HIST:
+        import pandas as pd
+
+        from .customer import DATA_DIR
+        _HIST["m"] = pd.read_csv(DATA_DIR / "monthly_summary.csv")
+    return _HIST["m"]
