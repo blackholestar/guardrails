@@ -52,6 +52,29 @@ function describeShock(s) {
   return parts
 }
 
+// A plan action from the backend (src/actions.py) becomes a guardrail: what the bank switches on,
+// or a step only the customer can take. `save` is how much it narrows the monthly gap.
+function railFromAction(a, i) {
+  const amt = money(a.monthly_amount)
+  const m = a.metric_changes || {}
+  const save = -(m.S || 0) + (m.I || 0)
+  const map = {
+    cash_withdrawals: [`Lower the cash limit by ${amt} a month`, 'Bank, automatic'],
+    card_spending: [`Card spending cap: ${amt} a month less`, 'Bank, automatic'],
+    transfers_out:
+      a.kind === 'change_commitment'
+        ? [`Pause a standing order (${amt} a month)`, 'Bank, automatic']
+        : [`Hold large outgoing transfers (${amt} a month)`, 'Bank, automatic'],
+    bank_fees: [`Low-balance alert to avoid ${amt} of fees`, 'Bank, automatic'],
+    loan_payment: [`Loan deferral request (${amt} a month)`, 'Bank sends, lender approves'],
+    household_bills: [`Renegotiate household bills (${amt} a month)`, 'Customer step'],
+    insurance: [`Review insurance (${amt} a month)`, 'Customer step'],
+    income: [`Extra income goal (${amt} a month)`, 'Customer step'],
+  }
+  const [label, who] = map[a.category] || [a.title, 'Customer step']
+  return { id: `a${i}`, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
+}
+
 function openStory() {
   window.location.hash = '#/'
 }
@@ -133,84 +156,57 @@ export default function DrivePage({ initialAccount }) {
   const [shock, setShock] = useState(NO_SHOCK)
   const [source, setSource] = useState(null) // 'ai' | 'rules' | 'preset' | 'manual'
   const [plan, setPlan] = useState(null)
-  const [guards, setGuards] = useState({ loan: false, cash: false })
+  const [on, setOn] = useState({}) // which guardrails are switched on, by id
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
 
   // ---------- numbers (judges' formula) ----------
   const c = profile
-  const guardSaving = (g) => (g.loan && c?.P ? c.P : 0) + (g.cash ? 300 : 0)
   const hasShock =
     shock.income_multiplier !== 1 || shock.bills_pct !== 0 || shock.one_off_cost !== 0 || shock.extra_monthly !== 0
+
+  // Guardrails are the plan, enforced: each action in Gemini's plan becomes one.
+  // Without a plan (presets, sliders, AI down) two standard ones stand in.
+  const rails = useMemo(() => {
+    if (!c) return []
+    if (plan?.actions?.length) {
+      return plan.actions.filter((a) => a.status !== 'rejected' && a.monthly_amount > 0.5).map(railFromAction)
+    }
+    const out = []
+    if (c.P > 0) out.push({ id: 'loan', label: `Loan deferral request: pause the ${money(c.P)} payment`, who: 'Bank sends, lender approves', save: c.P })
+    out.push({ id: 'cash', label: 'Lower the cash limit by $300 a month', who: 'Bank, automatic', save: 300 })
+    return out
+  }, [c, plan])
+
   const r = useMemo(() => {
     if (!c) return null
-    const base = runway(c)
     const shocked = runway(c, shock)
-    const withG = (g) => runway(c, { ...shock, extra_monthly: (shock.extra_monthly || 0) - guardSaving(g) })
+    const withSave = (sv) => runway(c, { ...shock, extra_monthly: (shock.extra_monthly || 0) - sv })
+    const saving = rails.reduce((t, x) => t + (on[x.id] ? x.save : 0), 0)
     return {
-      base,
+      base: runway(c),
       shocked,
-      guarded: withG(guards),
-      loanAlone: withG({ loan: true }),
-      cashAlone: withG({ cash: true }),
+      guarded: withSave(saving),
+      alone: Object.fromEntries(rails.map((x) => [x.id, Math.max(withSave(x.save).months - shocked.months, 0)])),
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c, shock, guards])
+  }, [c, shock, on, rails])
 
-  const anyGuard = (guards.loan && c?.P > 0) || guards.cash
+  const anyGuard = rails.some((x) => on[x.id])
   const final = r ? (anyGuard ? r.guarded : r.shocked) : null
   const goal = shock.income_months || 6
 
-  // Guardrails switch on by themselves when a shock leaves the customer short of the goal:
-  // the fewest needed, one at a time, slowly, after the results have landed. The customer can turn any off.
-  const [autoNote, setAutoNote] = useState('')
-  const [applying, setApplying] = useState(false)
-  const autoKey = useRef('')
+  // Guardrails are real actions, so they never switch on by themselves: they start off whenever the
+  // shock or plan changes, and the next one to apply pulses to invite a click.
+  const railKey = c ? `${c.id}|${JSON.stringify(shock)}|${rails.map((x) => x.id + x.save).join()}` : ''
+  const lastRailKey = useRef('')
   useEffect(() => {
-    if (!c || !hasShock) return
-    const key = `${c.id}|${JSON.stringify(shock)}`
-    if (autoKey.current === key) return
-    autoKey.current = key
-    const target = shock.income_months || 6
-    const save = (g) => (g.loan && c.P ? c.P : 0) + (g.cash ? 300 : 0)
-    const months = (g) => runway(c, { ...shock, extra_monthly: (shock.extra_monthly || 0) - save(g) }).months
-    if (months({}) >= target) {
-      const t = setTimeout(() => {
-        setGuards({ loan: false, cash: false })
-        setAutoNote('Makes it without guardrails, so none were switched on.')
-      }, 0)
-      return () => clearTimeout(t)
-    }
-    // pick the fewest: loan pause first (biggest), then the cash limit
-    const order = [...(c.P > 0 ? ['loan'] : []), 'cash']
-    const steps = []
-    const g = {}
-    for (const k of order) {
-      g[k] = true
-      steps.push(k)
-      if (months(g) >= target) break
-    }
-    const names = { loan: 'loan payment paused', cash: 'cash limited to $300 less a month' }
-    const timers = [
-      setTimeout(() => {
-        setGuards({ loan: false, cash: false })
-        setAutoNote('')
-        setApplying(true)
-      }, 0),
-    ]
-    steps.forEach((k, i) => timers.push(setTimeout(() => setGuards((cur) => ({ ...cur, [k]: true })), 1400 + i * 1600)))
-    timers.push(
-      setTimeout(() => {
-        setApplying(false)
-        const reached = months(g) >= target
-        setAutoNote(
-          `Switched on automatically: ${steps.map((k) => names[k]).join(', ')}.${reached ? '' : ' Still short of the goal.'} The customer can turn any off.`,
-        )
-      }, 1400 + steps.length * 1600),
-    )
-    return () => timers.forEach(clearTimeout)
-  }, [c, shock, hasShock])
+    if (lastRailKey.current === railKey) return
+    lastRailKey.current = railKey
+    const t = setTimeout(() => setOn({}), 0)
+    return () => clearTimeout(t)
+  }, [railKey])
+  const nextRail = rails.find((x) => !on[x.id])?.id
 
   const steel = r ? (hasShock ? r.shocked : r.base) : null
   const shownMonths = useCountUp(final ? Math.min(final.months, 120) : null)
@@ -228,7 +224,7 @@ export default function DrivePage({ initialAccount }) {
       setSource(null)
       setPlan(null)
       setReadTwist('')
-      setGuards({ loan: false, cash: false })
+      setOn({})
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -243,7 +239,13 @@ export default function DrivePage({ initialAccount }) {
     try {
       const d = await planScenario(id, text)
       setShock({ ...NO_SHOCK, ...d.impact.variables })
-      setPlan({ description: d.plan.description, justification: d.plan.justification, result: d.plan.result })
+      setPlan({
+        description: d.plan.description,
+        justification: d.plan.justification,
+        result: d.plan.result,
+        actions: d.plan.actions || [],
+        risks: d.plan.risks || [],
+      })
       setSource('ai')
     } catch {
       setShock({ ...NO_SHOCK, ...readTwistLocally(text, prof.S) })
@@ -422,7 +424,7 @@ export default function DrivePage({ initialAccount }) {
 
           {/* shock and guardrails */}
           <section className="dv-card dv-card-controls" aria-labelledby="c-controls">
-            <h2 id="c-controls" className="dv-label">Shock and guardrails</h2>
+            <h2 id="c-controls" className="dv-label">The shock</h2>
             {!ready ? (
               <Skeleton lines={3} />
             ) : (
@@ -471,24 +473,6 @@ export default function DrivePage({ initialAccount }) {
         </div>
       )}
 
-      {hasShock && (
-      <div className="dv-row dv-row-small">
-        <span className="dv-chips-label">Guardrails</span>
-        <span className="dv-chips">
-          {c.P > 0 && (
-            <button type="button" className="dv-guard" aria-pressed={guards.loan} onClick={() => setGuards((g) => ({ ...g, loan: !g.loan }))}>
-              Pause the {money(c.P)} loan payment
-              <span className="dv-gain">+{Math.max(r.loanAlone.months - r.shocked.months, 0).toFixed(1)} mo</span>
-            </button>
-          )}
-          <button type="button" className="dv-guard" aria-pressed={guards.cash} onClick={() => setGuards((g) => ({ ...g, cash: !g.cash }))}>
-            $300 less cash a month
-            <span className="dv-gain">+{Math.max(r.cashAlone.months - r.shocked.months, 0).toFixed(1)} mo</span>
-          </button>
-          <span className="dv-src">{applying ? 'Applying guardrails…' : autoNote || 'Rent and bills always go through.'}</span>
-        </span>
-      </div>
-      )}
               </div>
             )}
           </section>
@@ -505,7 +489,7 @@ export default function DrivePage({ initialAccount }) {
                     {typeof plan.result.runway_label === 'string' ? plan.result.runway_label : `${plan.result.runway_label.toFixed(1)}`}
                     {typeof plan.result.runway_label === 'string' ? null : <span className="dv-plan-unit"> months</span>}
                   </p>
-                  <p className="dv-plan-meta">with Gemini&rsquo;s plan, checked by the engine</p>
+                  <p className="dv-plan-meta">runway with Gemini&rsquo;s plan, up from {r.shocked.label} after the shock (checked by the engine)</p>
                   <p className={`dv-verdict ${plan.result.runway_months >= goal ? 'ok' : 'short'}`}>
                     {plan.result.runway_months >= goal ? `Reaches the ${goal}-month goal` : `${(goal - plan.result.runway_months).toFixed(1)} months short of the goal`}
                   </p>
@@ -516,7 +500,46 @@ export default function DrivePage({ initialAccount }) {
                 </div>
               </div>
             ) : (
-              <p className="dv-placeholder">Type a twist card in the console and press Go. Gemini writes a plan for this customer, and the engine checks how many months it buys.</p>
+              <p className="dv-placeholder">Type a twist card in the console and press Go. Gemini writes a plan for this customer, the engine checks how many months it buys, and its steps switch on below as guardrails.</p>
+            )}
+          </section>
+
+          {/* guardrails: the plan, enforced */}
+          <section className="dv-card dv-card-rails" aria-labelledby="c-rails">
+            <h2 id="c-rails" className="dv-label">Guardrails: the plan, enforced</h2>
+            {!ready ? (
+              <Skeleton lines={3} />
+            ) : !hasShock ? (
+              <p className="dv-placeholder">Read a twist card or pick a shock. The plan&rsquo;s steps then switch on here as guardrails.</p>
+            ) : (
+              <>
+                <ul className="dv-rails">
+                  {rails.map((x) => (
+                    <li key={x.id} className="dv-rail">
+                      <button type="button" className={`dv-guard${x.id === nextRail && !anyGuard ? ' is-next' : x.id === nextRail ? ' is-next is-soft' : ''}`} aria-pressed={!!on[x.id]} onClick={() => setOn((o) => ({ ...o, [x.id]: !o[x.id] }))}>
+                        {x.label}
+                        <span className="dv-gain">+{r.alone[x.id].toFixed(1)} mo</span>
+                      </button>
+                      <span className="dv-who">{x.who}{x.capped ? ' · capped at what they really spend' : ''}</span>
+                      {x.how && (
+                        <details className="dv-why">
+                          <summary>Why this</summary>
+                          <p>{x.evidence}</p>
+                          <p>{x.how}</p>
+                        </details>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <p className="dv-rails-total">
+                  Runway with these guardrails: <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>, up from {r.shocked.label}
+                </p>
+                <p className="dv-src">
+                  {anyGuard
+                    ? 'Switched on with the customer’s OK. Rent and bills always go through.'
+                    : 'Click a guardrail to switch it on. Each one is an action the bank carries out, with the customer’s OK.'}
+                </p>
+              </>
             )}
           </section>
         </div>

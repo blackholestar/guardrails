@@ -55,7 +55,7 @@
 }
 .dv-card-runway { grid-column: span 4; }
 .dv-card-track { grid-column: span 8; }
-.dv-card-strip, .dv-card-controls, .dv-card-plan { grid-column: span 12; }
+.dv-card-strip, .dv-card-controls, .dv-card-plan, .dv-card-rails { grid-column: span 12; }
 .dv-card-strip, .dv-card-controls { min-height: 0; }
 .dv-label { margin: 0 0 14px; font-size: 0.875rem; font-weight: 600; color: var(--ink-soft); letter-spacing: 0; }
 
@@ -238,3 +238,27 @@
 .dv-guard[aria-pressed='true'] { animation: dv-guard-on 900ms var(--ease); }
 @keyframes dv-guard-on { 0% { box-shadow: 0 0 0 0 rgb(239 106 26 / 0.7); } 100% { box-shadow: 0 0 0 12px rgb(239 106 26 / 0); } }
 @media (prefers-reduced-motion: reduce) { .dv-guard[aria-pressed='true'] { animation: none; } .dv-seg-orange { transition: none; } }
+
+/* guardrails card */
+.dv-rails { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dv-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.dv-card-rails .dv-guard { background: #eceff0; font-size: 0.9375rem; padding: 9px 12px; }
+.dv-card-rails .dv-guard:hover { background: #e2e6e8; }
+.dv-card-rails .dv-guard[aria-pressed='true'] { background: var(--orange); }
+.dv-who { font-size: 0.8125rem; color: var(--ink-soft); font-weight: 500; }
+.dv-why { flex-basis: 100%; font-size: 0.875rem; color: var(--ink-soft); }
+.dv-why summary { cursor: pointer; width: max-content; text-decoration: underline; text-underline-offset: 3px; }
+.dv-why p { margin: 6px 0 0; max-width: 80ch; line-height: 1.45; }
+.dv-rails-total { margin: 16px 0 4px; font-size: 1.0625rem; }
+.dv-card-rails .dv-src { margin-left: 0; }
+
+/* the next guardrail to apply radiates, inviting a click */
+.dv-guard.is-next { position: relative; box-shadow: 0 0 0 2px var(--orange) inset; }
+.dv-guard.is-next::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: 0 0 0 0 rgb(239 106 26 / 0.6); animation: dv-radiate 1.8s var(--ease) infinite;
+}
+.dv-guard.is-next.is-soft::after { animation-duration: 2.6s; }
+@keyframes dv-radiate { 0% { box-shadow: 0 0 0 0 rgb(239 106 26 / 0.55); } 100% { box-shadow: 0 0 0 16px rgb(239 106 26 / 0); } }
+@media (prefers-reduced-motion: reduce) { .dv-guard.is-next::after { animation: none; } }
+
