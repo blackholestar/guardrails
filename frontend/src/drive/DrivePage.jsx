@@ -223,10 +223,11 @@ export default function DrivePage({ initialAccount }) {
     ...agentLog.map((e) => ({
       key: e.key,
       t: Number(String(e.key).split('-')[0]) / 1000,
-      title: TOOL_TITLE[e.tool] || e.tool.replace(/_/g, ' '),
-      detail: e.status === 'refused' ? `Refused: ${e.detail}` : e.detail,
-      tag: e.status === 'refused' ? 'Refused' : 'Applied',
-      tone: e.status === 'refused' ? 'bad' : 'ok',
+      title: e.undo ? `Undone: ${e.rail}` : TOOL_TITLE[e.tool] || e.tool.replace(/_/g, ' '),
+      detail: e.status === 'refused' ? `Refused: ${e.detail}` : e.undo ? 'Switched off by the customer. The account is back to its normal limits.' : e.detail,
+      tag: e.status === 'refused' ? 'Refused' : e.undo ? 'Undone' : 'Guardrail on',
+      tone: e.status === 'refused' ? 'bad' : e.undo ? 'muted' : 'add',
+      mark: e.status === 'refused' ? '×' : e.undo ? '↺' : '+',
     })),
     ...(shopper?.purchases || []).map((p) => ({
       key: `p-${p.id}-${p.t}`,
@@ -235,6 +236,7 @@ export default function DrivePage({ initialAccount }) {
       detail: p.limit || p.reason,
       tag: p.overspend ? 'Overspending' : p.necessary ? 'Necessary' : 'Small extra',
       tone: p.overspend ? 'warn' : 'ok',
+      mark: p.overspend ? '!' : '✓',
     })),
   ].sort((x, y) => x.t - y.t)
   const hasShock =
@@ -289,7 +291,7 @@ export default function DrivePage({ initialAccount }) {
     setPending(x.id)
     try {
       const d = await callAgent(c.id, x, { ...(turningOn ? opts : { undo: true }), shock })
-      const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
+      const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source, undo: !turningOn }))
       const real = entries.filter((e) => !e.simulated)
       if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...l, ...real].slice(-20))
       const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
@@ -635,43 +637,12 @@ export default function DrivePage({ initialAccount }) {
                     </li>
                   ))}
                 </ul>
-                <section className="dv-activity" aria-labelledby="c-activity">
-                  <div className="dv-activity-head">
-                    <h3 id="c-activity" className="dv-activity-title">Agent activity</h3>
-                    <p className="dv-activity-shops">
-                      Shop as this customer:{' '}
-                      <a href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket</a>
-                      {' · '}
-                      <a href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt</a>
-                    </p>
-                  </div>
-                  {events.length === 0 ? (
-                    <p className="dv-activity-empty">Nothing yet. Switch on a guardrail above, or shop as this customer, and each step lands here.</p>
-                  ) : (
-                    <ol className="dv-feed">
-                      {events.map((e) => (
-                        <li key={e.key} className={`dv-ev tone-${e.tone}`}>
-                          <time className="dv-ev-time">{clock(e.t)}</time>
-                          <div className="dv-ev-body">
-                            <p className="dv-ev-title">{e.title}</p>
-                            <p className="dv-ev-detail">{e.detail}</p>
-                          </div>
-                          <span className="dv-ev-tag">{e.tag}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </section>
-
                 <div className="dv-result">
-                  <div>
-                    <p className="dv-result-label">Runway with guardrails on</p>
-                    <p className="dv-result-num">
-                      <span className="dv-result-from">{r.shocked.label}</span>
-                      <span aria-hidden="true">→</span>
-                      <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>
-                    </p>
-                  </div>
+                  <p className="dv-result-label">Runway with these guardrails</p>
+                  <p className="dv-result-num">
+                    <strong>{fmtMonths(anyGuard ? r.guarded : r.shocked)}</strong>
+                    <span className="dv-result-from">from {r.shocked.label} after the shock</span>
+                  </p>
                   <p className="dv-result-note">
                     {anyGuard
                       ? 'Switched on with the customer’s OK. Rent and bills always go through.'
@@ -681,6 +652,40 @@ export default function DrivePage({ initialAccount }) {
               </>
             )}
           </section>
+
+          {/* what the agent did, as it happens */}
+          {ready && hasShock && (
+            <section className="dv-card dv-card-activity" aria-labelledby="c-activity">
+              <div className="dv-activity-head">
+                <h2 id="c-activity" className="dv-label">Agent activity</h2>
+                <p className="dv-activity-shops">
+                  Shop as this customer:{' '}
+                  <a href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket</a>
+                  {' · '}
+                  <a href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt</a>
+                </p>
+              </div>
+              {events.length === 0 ? (
+                <p className="dv-activity-empty">Nothing yet. Switch on a guardrail above, or shop as this customer, and each step lands here.</p>
+              ) : (
+                <ol className="dv-feed">
+                  {events.map((e) => (
+                    <li key={e.key} className={`dv-ev tone-${e.tone}`}>
+                      <span className="dv-ev-dot" aria-hidden="true">{e.mark}</span>
+                      <div className="dv-ev-body">
+                        <p className="dv-ev-title">{e.title}</p>
+                        <p className="dv-ev-detail">{e.detail}</p>
+                      </div>
+                      <div className="dv-ev-side">
+                        <span className="dv-ev-tag">{e.tag}</span>
+                        <time className="dv-ev-time">{clock(e.t)}</time>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          )}
         </div>
       </main>
 
