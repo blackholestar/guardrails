@@ -4,9 +4,11 @@ All logic lives in src/service.py and src/engine.py; this file only exposes it o
 """
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
+from . import ai
 from .glossary import FLAG_TEXT, GLOSSARY
-from .service import get_account, list_account_ids
+from .service import get_account, list_account_ids, plan_scenario
 
 app = FastAPI(title="Resilience Rewired API")
 
@@ -14,7 +16,7 @@ app = FastAPI(title="Resilience Rewired API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -27,6 +29,35 @@ def health():
 @app.get("/api/glossary")
 def glossary():
     return {"metrics": GLOSSARY, "flags": FLAG_TEXT}
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+
+
+@app.post("/api/ai/chat")
+def ai_chat(req: ChatRequest):
+    """Connection check: send a plain message to Gemini and return its reply."""
+    try:
+        return ai.chat(req.message)
+    except ai.AIUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+class PlanRequest(BaseModel):
+    account_id: int
+    scenario: str = Field(min_length=1, max_length=2000)
+
+
+@app.post("/api/ai/plan")
+def ai_plan(req: PlanRequest):
+    """Typed scenario -> Gemini picks impact variables and a plan; the engine scores both."""
+    try:
+        return plan_scenario(req.account_id, req.scenario)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {req.account_id} not found")
+    except ai.AIUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @app.get("/api/accounts")

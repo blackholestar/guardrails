@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchAccount, fetchExamples, fetchGlossary } from './api'
+import ScenarioPlanner from './ScenarioPlanner'
 import './App.css'
 
 const money = (x) =>
@@ -136,6 +137,8 @@ export default function App() {
           </details>
         </section>
       )}
+
+      <ScenarioPlanner key={data?.account_id ?? 'none'} accountId={data?.account_id ?? null} metrics={m} />
     </main>
   )
 }
