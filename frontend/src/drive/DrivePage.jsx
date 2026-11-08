@@ -423,7 +423,7 @@ export default function DrivePage({ initialAccount }) {
         <a className="dv-mark" href="#/">Guardrails</a>
         <nav className="dv-nav" aria-label="Pages">
           <button type="button" className="dv-navlink" onClick={openStory}>The story</button>
-          <a className="dv-navlink" href={`#/classic${profile ? `?account=${profile.id}` : ''}`}>Classic view</a>
+          <a className="dv-navlink" href="#/findings">Our findings</a>
         </nav>
       </header>
 
