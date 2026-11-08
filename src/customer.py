@@ -131,6 +131,10 @@ def _message(merchant: str, amount: float, before: float, after: float, goal: fl
 def _say(box: dict, text: str, kind: str = "info", **extra) -> dict:
     msg = {"id": f"m{len(box['messages']) + 1}", "t": time.time(), "kind": kind, "text": text, **extra}
     box["messages"].append(msg)
+    if kind == "hold":  # the overspending heads-up goes to the customer's phone
+        from .notify import push
+        why = extra.get("why")
+        push(text + (f"\n\nWhy: {why}" if why else ""), title="Guardrails: heads-up")
     return msg
 
 

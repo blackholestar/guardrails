@@ -115,7 +115,9 @@ def _apply(box: dict, call: str, args: dict) -> str:
         s["reserve_transfer"] = args["monthly_amount"]
         return f"${args['monthly_amount']:,.0f}/month moves to the reserve on payday"
     if call == "notify_customer":
-        return f"Message sent: “{args.get('message', '')}”"
+        from .notify import push
+        sent = push(str(args.get("message", "")), title="Guardrails", tags="bell")
+        return f"Message sent{' to the phone' if sent else ''}: “{args.get('message', '')}”"
     return "Done"
 
 

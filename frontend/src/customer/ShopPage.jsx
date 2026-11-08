@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { money } from '../runway'
 import { PayPalButtons } from './PayPalButtons'
-import { Phone } from './Phone'
 import { customerApi, useCustomer } from './customerApi'
 import './customer.css'
 import './shop.css'
@@ -222,7 +221,6 @@ export default function ShopPage({ store: storeKey, account }) {
             {result === 'held' && <p className="sh-note is-hold">Payment on hold. Check your phone.</p>}
             <p className="sh-bal">Card balance {state ? money(state.balance) : '—'}</p>
           </section>
-          <Phone id={id} state={state} setState={setState} compact />
         </aside>
       </main>
     </div>
