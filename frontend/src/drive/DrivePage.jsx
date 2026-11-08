@@ -187,6 +187,7 @@ export default function DrivePage({ initialAccount }) {
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
   const [agentLog, setAgentLog] = useState([]) // the Guardian's tool calls, newest first
   const [pending, setPending] = useState('') // guardrail id the agent is working on
+  const [safety, setSafety] = useState(null) // results of the last safety test
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
@@ -246,7 +247,9 @@ export default function DrivePage({ initialAccount }) {
     try {
       const d = await callAgent(c.id, x, turningOn ? opts : { undo: true })
       const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
-      setAgentLog((l) => [...entries.reverse(), ...l].slice(0, 14))
+      const real = entries.filter((e) => !e.simulated)
+      if (opts.simulate_attack) setSafety(entries.filter((e) => e.simulated))
+      if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...real.reverse(), ...l].slice(0, 14))
       const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
       if (turningOn && applied) setOn((o) => ({ ...o, [x.id]: true }))
       if (!turningOn) setOn((o) => ({ ...o, [x.id]: false }))
@@ -280,6 +283,7 @@ export default function DrivePage({ initialAccount }) {
       setReadTwist('')
       setOn({})
       setAgentLog([])
+      setSafety(null)
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -591,9 +595,27 @@ export default function DrivePage({ initialAccount }) {
                   <div className="dv-agent-head">
                     <p className="dv-agent-title">Guardian agent activity <span className="dv-who">sandbox account · every tool call is rule-checked</span></p>
                     <button type="button" className="dv-adjust" disabled={!!pending || !rails.length} onClick={() => toggleRail(rails.find((x) => on[x.id]) || rails[0], { simulate_attack: true })}>
-                      Simulate a manipulated agent
+                      Test the safety rules
                     </button>
                   </div>
+                  {safety && (
+                    <div className="dv-safety">
+                      <p className="dv-safety-title">
+                        Safety test: {safety.filter((e) => e.status === 'refused').length} of {safety.length} dangerous requests blocked
+                        <span className="dv-who">what if the agent were tricked? The rules in our code stop it.</span>
+                      </p>
+                      <ol className="dv-agent-log">
+                        {safety.map((e) => (
+                          <li key={e.key} className={`is-${e.status}`}>
+                            <span className="dv-agent-mark" aria-hidden="true">{e.status === 'applied' ? '✓' : '✗'}</span>
+                            <code>{e.tool}({fmtArgs(e.args)})</code>
+                            <span className="dv-agent-detail">{e.status === 'refused' ? 'Blocked: ' : ''}{e.detail}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <button type="button" className="dv-adjust" onClick={() => setSafety(null)}>Hide test</button>
+                    </div>
+                  )}
                   {agentLog.length === 0 ? (
                     <p className="dv-placeholder">Click a guardrail. The agent carries it out with tools, and you&rsquo;ll see each call here.</p>
                   ) : (
@@ -605,7 +627,6 @@ export default function DrivePage({ initialAccount }) {
                           <span className="dv-agent-detail">
                             {e.status === 'refused' ? 'Refused: ' : ''}
                             {e.detail}
-                            {e.simulated ? ' (simulated attack)' : ''}
                           </span>
                           {e.source && e.source !== 'gemini' && e.source !== 'customer' ? <span className="dv-who">{e.source}</span> : null}
                         </li>

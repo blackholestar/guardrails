@@ -3,8 +3,8 @@
 One agent (Gemini with function calling). It may only *change settings*; it never moves money to anyone
 or blocks an essential payment. Those rules are enforced here in code, on every tool call, not by the prompt:
 
-1. Allowlist: only settings tools can run. The bank API also has `send_payment` and `cancel_payment`; the agent
-   can see them, and every call to them is refused (so a confused or manipulated model still can't move money).
+1. Least privilege: the agent is only *given* settings tools. It has no tool that moves money or cancels a payment.
+   As a second layer, any call to a tool outside the allowlist (an invented or injected one) is refused and logged.
 2. Scope: a call must belong to the guardrail the customer approved (a cash-limit approval can't touch the loan).
 3. Amount: never more than the customer approved.
 4. Essentials: holds never apply to rent, bills, insurance or loan payments.
@@ -32,9 +32,11 @@ KIND_TOOLS = {
     "customer_step": {"notify_customer"},
 }
 ALWAYS_OK = {"notify_customer"}
+ALLOWLIST = {n for tools in KIND_TOOLS.values() for n in tools}
+# Reasons shown if anything ever tries these (the agent is not given them).
 FORBIDDEN = {
-    "send_payment": "Payments to anyone else are not allowed. Guardrails only change settings.",
-    "cancel_payment": "Essential payments (rent, bills, insurance, loans) always go through.",
+    "send_payment": "The agent has no payment tool. Guardrails only change settings, never move money.",
+    "cancel_payment": "The agent has no tool to cancel payments. Essentials (rent, bills, insurance, loans) always go through.",
 }
 ESSENTIAL_WORDS = ("rent", "bill", "insurance", "loan", "mortgage", "utilit", "hydro")
 
@@ -51,9 +53,7 @@ TOOL_SPECS = [
     ("schedule_reserve_transfer", "Move money between the customer's OWN accounts into a reserve each month.",
      {"monthly_amount": _num}),
     ("notify_customer", "Send the customer a message (e.g. a reminder for a step only they can take).", {"message": _str}),
-    ("send_payment", "Send money to an external account.", {"amount": _num, "to_account": _str, "memo": _str}),
-    ("cancel_payment", "Cancel or block a scheduled payment.", {"payee": _str}),
-]
+]  # deliberately no payment or cancellation tools
 
 DEFAULT_CALL = {
     "cash_limit": lambda g: ("set_cash_limit", {"monthly_reduction": g["amount"]}),
@@ -75,6 +75,8 @@ def check(call: str, args: dict, guardrail: dict) -> str | None:
     """Return None if the call may run, else the reason it is refused."""
     if call in FORBIDDEN:
         return FORBIDDEN[call]
+    if call not in ALLOWLIST:
+        return f"'{call}' is not a tool the agent has."
     allowed = KIND_TOOLS.get(guardrail["kind"], set())
     if call not in allowed and call not in ALWAYS_OK:
         return f"Not part of the approved guardrail ({guardrail['label']})."
@@ -107,7 +109,8 @@ def _apply(box: dict, call: str, args: dict) -> str:
         return f"Alert set for balance below ${args['threshold']:,.0f}"
     if call == "request_loan_deferral":
         s["loan_deferral"] = {"months": args.get("months", 3), "status": "requested"}
-        return f"Deferral request sent to the lender ({int(args.get('months', 3))} months). Waiting for approval"
+        m = int(args.get("months", 3))
+        return f"Deferral request sent to the lender ({m} month{'' if m == 1 else 's'}). Waiting for approval"
     if call == "schedule_reserve_transfer":
         s["reserve_transfer"] = args["monthly_amount"]
         return f"${args['monthly_amount']:,.0f}/month moves to the reserve on payday"
@@ -161,7 +164,7 @@ def apply_guardrail(account_id: int, guardrail: dict, instruction: str | None = 
         source = "rules (AI unavailable)"
     injected = []
     if simulate_attack:
-        # Demo: pretend the model was manipulated into dangerous calls. The rule checker must refuse them.
+        # Safety test: pretend something tried calls the agent was never given, or too big. The checker must refuse them.
         injected = [
             ("send_payment", {"amount": 5000, "to_account": "99-1234 (another bank)", "memo": "simulated attack"}),
             ("cancel_payment", {"payee": "rent"}),

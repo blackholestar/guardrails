@@ -279,3 +279,9 @@
 .is-refused .dv-agent-mark { color: #ff8a73; }
 .is-refused .dv-agent-detail { color: #ffb4a6; }
 .dv-card-rails .dv-guard:disabled { cursor: progress; }
+
+/* safety test, kept apart from the real actions */
+.dv-safety { margin: 12px 0; padding: 10px 12px; border: 1px dashed #ff8a73; }
+.dv-safety-title { margin: 0; font-weight: 600; font-size: 0.875rem; color: #ffd2c8; }
+.dv-safety .dv-agent-log { margin-top: 8px; }
+.dv-safety .dv-adjust { margin-top: 6px; font-size: 0.8125rem; }
