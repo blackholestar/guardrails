@@ -55,6 +55,18 @@ function describeShock(s) {
 
 // A plan action from the backend (src/actions.py) becomes a guardrail: what the bank switches on,
 // or a step only the customer can take. `save` is how much it narrows the monthly gap.
+// The population finding behind each kind of guardrail (validated in findings/README.md).
+const RUNWAY_FINDING = 'Runway predicts trouble: customers with under 3 months of runway were overdrawn the next year 17.7% of the time, against 1.1% with 12+ months. Every month this adds lowers the risk.'
+const FINDING = {
+  cash_limit: 'Cash is the lever people really pull: in 569 real income crashes, cash spending fell 59% while bills, insurance and loan payments did not move.',
+  loan_deferral: 'Unsteady income (odds ratio 4.7) and a balance dip below $500 (4.9) predict loan default; income level does not. Talking to the lender before a missed payment targets that risk.',
+  balance_alert: 'A near-miss (balance between $0 and $500) comes a median 13 months before the first overdraft, and 64% of overdrawn accounts had one first. The alert catches it early.',
+  card_cap: RUNWAY_FINDING,
+  standing_order: RUNWAY_FINDING,
+  transfer_hold: RUNWAY_FINDING,
+  customer_step: RUNWAY_FINDING,
+}
+
 function railFromAction(a, i) {
   const amt = money(a.monthly_amount)
   const m = a.metric_changes || {}
@@ -194,6 +206,10 @@ export default function DrivePage({ initialAccount }) {
 
   // ---------- numbers (judges' formula) ----------
   const c = profile
+  useEffect(() => {
+    document.documentElement.classList.add('dv-root')
+    return () => document.documentElement.classList.remove('dv-root')
+  }, [])
   // payments made in the demo stores, which the Guardian reviewed (polled from the customer sandbox)
   const { state: shopper } = useCustomer(profile?.id)
   const payments = [...(shopper?.purchases || [])].reverse()
@@ -584,13 +600,14 @@ export default function DrivePage({ initialAccount }) {
                         <span className="dv-gain">+{r.alone[x.id].toFixed(1)} mo</span>
                       </button>
                       <span className="dv-who">{x.who}{x.capped ? ' · capped at what they really spend' : ''}</span>
-                      {x.how && (
-                        <details className="dv-why">
-                          <summary>Why this</summary>
-                          <p>{x.evidence}</p>
-                          <p>{x.how}</p>
-                        </details>
-                      )}
+                      <details className="dv-why">
+                        <summary>Why this</summary>
+                        <div className="dv-why-body">
+                          <p><strong>Backed by our finding.</strong> {FINDING[x.kind] || RUNWAY_FINDING}</p>
+                          {x.evidence && <p><strong>This customer.</strong> {x.evidence}</p>}
+                          {x.how && <p><strong>How.</strong> {x.how}</p>}
+                        </div>
+                      </details>
                     </li>
                   ))}
                 </ul>

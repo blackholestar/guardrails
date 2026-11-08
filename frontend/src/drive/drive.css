@@ -246,9 +246,23 @@
 .dv-card-rails .dv-guard:hover { background: #e2e6e8; }
 .dv-card-rails .dv-guard[aria-pressed='true'] { background: var(--orange); }
 .dv-who { font-size: 0.8125rem; color: var(--ink-soft); font-weight: 500; }
-.dv-why { flex-basis: 100%; font-size: 0.875rem; color: var(--ink-soft); }
-.dv-why summary { cursor: pointer; width: max-content; text-decoration: underline; text-underline-offset: 3px; }
-.dv-why p { margin: 6px 0 0; max-width: 80ch; line-height: 1.45; }
+.dv-why { flex-basis: 100%; font-size: 0.9375rem; color: var(--ink-soft); }
+.dv-why summary {
+  cursor: pointer; width: max-content; list-style: none; display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 10px; font-weight: 600; color: var(--ink); background: #eceff0; user-select: none;
+}
+.dv-why summary::-webkit-details-marker { display: none; }
+.dv-why summary::after {
+  content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  rotate: 45deg; translate: 0 -2px; transition: rotate 200ms var(--ease), translate 200ms var(--ease);
+}
+.dv-why[open] summary::after { rotate: 225deg; translate: 0 2px; }
+.dv-why summary:hover { background: #e2e6e8; }
+.dv-why summary:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.dv-why-body { margin-top: 8px; padding: 4px 0 4px 14px; box-shadow: inset 2px 0 0 var(--orange); max-width: 90ch; }
+.dv-why-body p { margin: 6px 0 0; line-height: 1.5; }
+.dv-why-body p:first-child { margin-top: 0; }
+.dv-why-body strong { color: var(--ink); }
 .dv-rails-total { margin: 16px 0 4px; font-size: 1.0625rem; }
 .dv-card-rails .dv-src { margin-left: 0; }
 
@@ -291,3 +305,7 @@
 .dv-actas:focus-visible { outline: 3px solid var(--paint); outline-offset: 2px; }
 .dv-agent-sub { margin: 14px 0 0; font-size: 0.8125rem; font-weight: 600; color: #a9b1b6; }
 .is-held .dv-agent-mark { color: #ffb27a; }
+
+/* bigger type on big screens so the dashboard reads from across a room */
+@media (min-width: 1400px) { html.dv-root { font-size: 112.5%; } }
+@media (min-width: 1800px) { html.dv-root { font-size: 125%; } }
