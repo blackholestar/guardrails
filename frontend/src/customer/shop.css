@@ -1,0 +1,79 @@
+/* Demo stores: the familiar look of an online grocery store and an electronics store, our own names. */
+.sh {
+  --ink: #1a1d20;
+  --soft: #5a626c;
+  --accent: #2e7d32;
+  --accent-ink: #fff;
+  --bg: #f6f7f5;
+  --head: #fff;
+  --head-ink: #1a1d20;
+  --m: clamp(16px, 2.2vw, 32px);
+  --orange: #ef6a1a; /* used by the phone */
+  --green: #0d5a3a;
+  --ink-soft: #4b5156;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.sh * { box-sizing: border-box; }
+.sh-fresh { --accent: #2e7d32; --bg: #f5f8f2; --head: #ffffff; }
+.sh-volt { --accent: #ffd400; --accent-ink: #111; --bg: #f2f3f5; --head: #0b1d3a; --head-ink: #fff; }
+
+.sh-demo { background: #202326; color: #efefed; font-size: 0.8125rem; padding: 6px var(--m); }
+.sh-demo a { color: #ffb27a; }
+.sh-head {
+  display: flex; align-items: center; gap: 20px; padding: 14px var(--m); background: var(--head); color: var(--head-ink);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+}
+.sh-logo { margin: 0; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.03em; }
+.sh-fresh .sh-logo { color: var(--accent); }
+.sh-volt .sh-logo { color: var(--accent); font-style: italic; }
+.sh-search { flex: 1; max-width: 560px; background: rgb(127 127 127 / 0.12); border-radius: 999px; padding: 10px 16px; font-size: 0.9375rem; color: inherit; opacity: 0.75; }
+.sh-cart-pill { margin: 0 0 0 auto; background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 8px 14px; border-radius: 999px; font-size: 0.9375rem; }
+.sh-nav { display: flex; gap: 22px; padding: 10px var(--m); background: var(--head); color: var(--head-ink); font-size: 0.9375rem; font-weight: 600; box-shadow: 0 1px 0 rgb(0 0 0 / 0.08); flex-wrap: wrap; }
+.sh-volt .sh-nav { background: #12284d; }
+
+.sh-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; padding: 24px var(--m) 60px; max-width: 1360px; margin: 0 auto; }
+.sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; align-content: start; }
+.sh-item { background: #fff; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
+.sh-img { height: 120px; display: grid; place-items: center; font-size: 3.4rem; background: rgb(127 127 127 / 0.07); border-radius: 8px; }
+.sh-name { margin: 4px 0 0; font-size: 0.9375rem; font-weight: 600; min-height: 2.6em; }
+.sh-price { margin: 0; font-weight: 800; font-size: 1.125rem; }
+.sh-price s { margin-left: 8px; font-weight: 500; font-size: 0.875rem; color: var(--soft); }
+.sh-volt .sh-price { color: #c8102e; }
+.sh-add {
+  margin-top: auto; font: inherit; font-weight: 700; border: 0; border-radius: 999px; padding: 9px; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+}
+.sh-add:focus-visible, .sh-qty button:focus-visible, .sh-checkout:focus-visible { outline: 3px solid #ef6a1a; outline-offset: 2px; }
+.sh-qty { margin-top: auto; display: flex; align-items: center; justify-content: space-between; border: 2px solid var(--accent); border-radius: 999px; }
+.sh-volt .sh-qty { border-color: #111; }
+.sh-qty button { font: inherit; font-weight: 800; font-size: 1.1rem; border: 0; background: none; padding: 6px 14px; cursor: pointer; }
+.sh-qty span { font-weight: 700; }
+
+.sh-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; align-self: start; }
+.sh-cart { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
+.sh-cart h2 { margin: 0 0 10px; font-size: 1.0625rem; }
+.sh-cart ul { list-style: none; margin: 0; padding: 0; font-size: 0.875rem; }
+.sh-cart li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.sh-total { display: flex; justify-content: space-between; font-weight: 800; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid rgb(0 0 0 / 0.08); }
+.sh-checkout {
+  width: 100%; margin-top: 12px; font: inherit; font-weight: 800; border: 0; border-radius: 10px; padding: 12px; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink);
+}
+.sh-checkout:disabled { opacity: 0.5; cursor: not-allowed; }
+.sh-note { margin: 10px 0 0; font-weight: 600; font-size: 0.9375rem; }
+.sh-note.ok { color: #2e7d32; }
+.sh-note.hold { color: #c2410c; }
+.sh-bal { margin-top: 8px !important; }
+
+/* the phone, smaller inside a shop */
+.sh .cu-phone.is-compact { position: static; min-height: 300px; font-family: 'Switzer', ui-sans-serif, system-ui, sans-serif; }
+.sh .cu-phone.is-compact .cu-thread { max-height: 360px; }
+
+@media (max-width: 900px) {
+  .sh-main { grid-template-columns: 1fr; }
+  .sh-side { position: static; }
+  .sh-search { display: none; }
+}

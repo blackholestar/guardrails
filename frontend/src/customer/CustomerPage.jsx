@@ -105,7 +105,16 @@ export default function CustomerPage({ account }) {
             )}
           </div>
 
-          <h2 className="cu-h2">Spend somewhere</h2>
+          <h2 className="cu-h2">Go shopping</h2>
+          <div className="cu-stores">
+            <a className="cu-store cu-store-fresh" href={`#/shop/fresh-basket?account=${id}`}>
+              <strong>Fresh Basket</strong><span>Groceries: necessities</span>
+            </a>
+            <a className="cu-store cu-store-volt" href={`#/shop/volt?account=${id}`}>
+              <strong>Volt</strong><span>Electronics: not necessary</span>
+            </a>
+          </div>
+          <h2 className="cu-h2">Or spend somewhere quickly</h2>
           <div className="cu-shops">
             {SHOPS.map((p) => (
               <button key={p.merchant} type="button" className="cu-shop" disabled={!!busy} onClick={() => buy(p)}>

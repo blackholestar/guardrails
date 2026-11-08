@@ -89,3 +89,11 @@
   .cu-phone { position: static; }
   .cu-shops { grid-template-columns: 1fr; }
 }
+
+.cu-stores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cu-store { display: flex; flex-direction: column; gap: 2px; padding: 16px; border-radius: 12px; text-decoration: none; }
+.cu-store strong { font-size: 1.25rem; letter-spacing: -0.02em; }
+.cu-store span { font-size: 0.8125rem; }
+.cu-store-fresh { background: #e3f1e1; color: #1d5a22; }
+.cu-store-volt { background: #0b1d3a; color: #ffd400; }
+.cu-store:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
