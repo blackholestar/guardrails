@@ -257,6 +257,10 @@ def public_state(account_id: int) -> dict:
         limits.append(f"Alert if balance falls below ${s['balance_alert_below']:,.0f}")
     if s.get("loan_deferral"):
         limits.append("Loan deferral requested")
+    if s.get("paused_order_info"):
+        o = s["paused_order_info"]
+        to = f" to account {o['to_account']}" if o.get("to_account") else ""
+        limits.append(f"Standing order ${o['amount']:,.2f}/month{to} paused; skipped on {o['next']}")
     if s.get("reserve_transfer"):
         limits.append(f"${s['reserve_transfer']:,.0f}/month to your reserve")
     try:

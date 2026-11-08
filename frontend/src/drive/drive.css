@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800&display=swap');
 /* Engine page: the road is the canvas, a console floats at the bottom. Tokens match the landing story. */
 .dv {
   --asphalt: #202326;
@@ -424,3 +425,91 @@
 .dv-intro-title { margin: 0; color: #fff; font-size: clamp(1.75rem, 1.1rem + 2vw, 3rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.05; }
 .dv-intro-sub { margin: 0; color: #e3e6e8; font-size: 1.0625rem; }
 @media (prefers-reduced-motion: reduce) { .dv-intro, .dv-intro.is-gone { transition: none; } }
+
+
+/* ---------- Highway signage: the engine reads like the road it's named after ---------- */
+.dv { --sign: #0b6b45; --sign-font: 'Overpass', 'Switzer', ui-sans-serif, sans-serif; background-image: none; background-color: #e4e7e8; }
+
+/* asphalt bar with a dashed centre line */
+.dv-bar { padding-bottom: 20px; }
+.dv-bar::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 7px; height: 3px;
+  background: repeating-linear-gradient(90deg, #f2c230 0 46px, transparent 46px 80px);
+}
+.dv-mark { font-family: var(--sign-font); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; font-size: 1.25rem; }
+
+/* account number as a route shield */
+.dv-title { font-family: var(--sign-font); font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.35em; }
+.dv-shield {
+  display: inline-grid; place-items: center; min-width: 2.4em; padding: 0.18em 0.32em 0.32em; font-size: 0.8em;
+  background: var(--ink); color: var(--paint); line-height: 1;
+  clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+  box-shadow: inset 0 0 0 4px var(--ink), inset 0 0 0 6px var(--paint);
+}
+
+/* every card label is a small green guide plate */
+.dv-label {
+  display: inline-block; font-family: var(--sign-font); font-weight: 700; font-size: 0.8125rem;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #fff; background: var(--sign);
+  padding: 5px 10px 3px; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--sign), inset 0 0 0 3px rgb(255 255 255 / 0.85);
+}
+.dv-card { border-radius: 2px; }
+
+/* the runway card is the big guide sign */
+.dv-card-runway {
+  background: var(--sign); color: #fff; border-radius: 12px;
+  box-shadow: inset 0 0 0 5px var(--sign), inset 0 0 0 8px #fff, 0 18px 40px -26px rgb(11 107 69 / 0.9);
+  padding: 26px 30px 28px;
+}
+.dv-card-runway .dv-label { background: none; box-shadow: none; padding: 0; font-size: 1rem; letter-spacing: 0.1em; }
+.dv-card-runway .dv-big { font-family: var(--sign-font); font-weight: 800; letter-spacing: -0.03em; display: flex; align-items: baseline; flex-wrap: wrap; }
+.dv-card-runway .dv-big-unit { font-family: var(--sign-font); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+.dv-big-arrow { margin-left: auto; font-size: 0.6em; line-height: 1; }
+.dv-card-runway .dv-line { color: rgb(255 255 255 / 0.9); }
+.dv-card-runway .dv-verdict.ok { background: #fff; color: var(--sign); }
+.dv-card-runway .dv-verdict.short { background: #f2c230; color: var(--ink); }
+.dv-card-runway .dv-skel span { background: rgb(255 255 255 / 0.18); }
+
+/* the plan is road work ahead: an orange construction plate */
+.dv-card-plan .dv-label { background: var(--orange); color: var(--ink); box-shadow: inset 0 0 0 2px var(--orange), inset 0 0 0 3px var(--ink); }
+.dv-card-plan .dv-plan-num { font-family: var(--sign-font); font-weight: 800; letter-spacing: -0.02em; }
+
+/* guardrails card: a steel W-beam runs along its top, posts below */
+.dv-card-rails { position: relative; padding-top: 48px; }
+.dv-card-rails::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 20px;
+  background:
+    linear-gradient(#eef1f2, #b4bbc0 30%, #8d959b 50%, #c6ccd0 70%, #9aa2a8);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 100%);
+}
+.dv-card-rails::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 20px; height: 14px;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 8px), #6f777d calc(12.5% - 8px) 12.5%);
+}
+
+/* numbers read like sign type */
+.dv-cell dd, .dv-result-num { font-family: var(--sign-font); font-weight: 700; letter-spacing: -0.01em; }
+.dv-cell dt { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+/* below the goal, the runway sign turns red; card plates are orange */
+.dv-card-runway.is-short { --sign: #b3261e; background: var(--sign); box-shadow: inset 0 0 0 5px var(--sign), inset 0 0 0 8px #fff, 0 18px 40px -26px rgb(179 38 30 / 0.9); }
+.dv-card:not(.dv-card-runway) .dv-label { background: var(--orange); color: var(--ink); box-shadow: inset 0 0 0 2px var(--orange), inset 0 0 0 3px var(--ink); }
+
+/* activity markers: size in rem so the circle, its glyph and the title line share one centre at every font scale */
+.dv-ev { grid-template-columns: 2.25rem minmax(0, 1fr) auto; }
+.dv-ev:not(:last-child)::before { left: calc(1.125rem - 1px); top: 2.25rem; }
+.dv-ev-dot {
+  box-sizing: border-box; width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center;
+  font-family: Arial, 'Helvetica Neue', sans-serif; font-size: 1.125rem; font-feature-settings: normal;
+  text-box: trim-both cap alphabetic;
+}
+.dv-ev-body, .dv-ev-side { padding-top: 0; }
+.dv-ev-title, .dv-ev-tag { line-height: 2.25rem; }
+.dv-ev-detail { margin-top: 0; }
+@media (max-width: 640px) { .dv-ev { grid-template-columns: 2.25rem minmax(0, 1fr); } }
+
+/* card titles: plain orange sign lettering, no plate */
+.dv-card:not(.dv-card-runway) .dv-label { background: none; box-shadow: none; padding: 0; color: var(--orange); font-size: 1.0625rem; font-weight: 800; }
+
+/* the one-line reason under each explainer chart */
+.dx-why { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid rgb(26 29 32 / 0.1); font-size: 1rem; line-height: 1.45; font-weight: 600; color: var(--ink); } /* taste-skill-ignore: caption rule */

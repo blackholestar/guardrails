@@ -209,7 +209,8 @@ export default function DrivePage({ initialAccount }) {
     return () => document.documentElement.classList.remove('dv-root')
   }, [])
   // payments made in the demo stores, which the Guardian reviewed (polled from the customer sandbox)
-  const { state: shopper } = useCustomer(profile?.id)
+  const { state: shopperRaw } = useCustomer(profile?.id)
+  const shopper = shopperRaw && String(shopperRaw.account_id ?? profile?.id) === String(profile?.id) ? shopperRaw : null
   const events = [
     ...agentLog.map((e) => ({
       key: e.key,
@@ -318,6 +319,8 @@ export default function DrivePage({ initialAccount }) {
     setError('')
     try {
       const d = await fetchAccount(id)
+      // start the sandbox fresh first, so no payments from an earlier run show in Agent activity
+      await fetch(`/api/customer/${d.account_id}/reset`, { method: 'POST' }).catch(() => {})
       setProfile({ ...d.profile, id: d.account_id })
       setMeta({ ...d.profile, flags: d.flags })
       setShock(NO_SHOCK)
@@ -326,8 +329,6 @@ export default function DrivePage({ initialAccount }) {
       setReadTwist('')
       setOn({})
       setAgentLog([])
-      // start the sandbox fresh too: no payments or limits from an earlier run
-      fetch(`/api/customer/${d.account_id}/reset`, { method: 'POST' }).catch(() => {})
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -367,12 +368,14 @@ export default function DrivePage({ initialAccount }) {
     if (!id) return setError('Type an account ID first.')
     if (!VALID.has(Number(id))) return setError(`There is no account ${id}. IDs run from 20111 to 99984.`)
     let prof = profile
-    if (!profile || String(profile.id) !== id) {
+    const fresh = !profile || String(profile.id) !== id
+    if (fresh) {
       prof = await loadAccount(id)
       if (!prof) return
     }
     const text = twist.trim()
-    if (text && text !== readTwist) await applyTwist(id, text, prof)
+    // a new account starts with no shock, so read the twist card even if it's the same text as before
+    if (text && (fresh || text !== readTwist)) await applyTwist(id, text, prof)
     if (!text && readTwist) {
       setShock(NO_SHOCK)
       setReadTwist('')
@@ -431,7 +434,9 @@ export default function DrivePage({ initialAccount }) {
         <div ref={stageRef} className={`dv-stage${explainRail ? ' is-explain' : ''}`}>
         <div className="dv-pane dv-pane-main" inert={explainRail ? true : undefined}>
         <div className="dv-head">
-          <h1 className="dv-title">{ready ? `Account ${profile.id}` : 'Runway engine'}</h1>
+          <h1 className="dv-title">
+            {ready ? <>Account <span className="dv-shield">{profile.id}</span></> : 'Runway engine'}
+          </h1>
           <p className="dv-sub">
             {ready
               ? `${meta.district}, ${meta.region} · owner ${Math.round(meta.owner_age)} · ${meta.months_history} months of history`
@@ -490,8 +495,8 @@ export default function DrivePage({ initialAccount }) {
           </section>
 
           {/* runway */}
-          <section className="dv-card dv-card-runway" aria-labelledby="c-runway">
-            <h2 id="c-runway" className="dv-label">Runway</h2>
+          <section className={`dv-card dv-card-runway${ready && final.months < goal ? ' is-short' : ''}`} aria-labelledby="c-runway">
+            <h2 id="c-runway" className="dv-label">Savings run out in</h2>
             {!ready ? (
               <Skeleton big lines={2} />
             ) : (
@@ -499,6 +504,7 @@ export default function DrivePage({ initialAccount }) {
                 <p className="dv-big">
                   {bigLabel}
                   <span className="dv-big-unit">months</span>
+                  <span className="dv-big-arrow" aria-hidden="true">→</span>
                 </p>
                 <p className="dv-line">
                   {hasShock
@@ -528,7 +534,7 @@ export default function DrivePage({ initialAccount }) {
 
           {/* shock and guardrails */}
           <section className="dv-card dv-card-controls" aria-labelledby="c-controls">
-            <h2 id="c-controls" className="dv-label">The shock</h2>
+            <h2 id="c-controls" className="dv-label">Apply a shock</h2>
             {!ready ? (
               <Skeleton lines={3} />
             ) : (
@@ -610,7 +616,7 @@ export default function DrivePage({ initialAccount }) {
 
           {/* guardrails: the plan, enforced */}
           <section className="dv-card dv-card-rails" aria-labelledby="c-rails">
-            <h2 id="c-rails" className="dv-label">Guardrails: the plan, enforced</h2>
+            <h2 id="c-rails" className="dv-label">Guardrails</h2>
             {!ready ? (
               <Skeleton lines={3} />
             ) : !hasShock ? (

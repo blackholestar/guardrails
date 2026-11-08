@@ -33,6 +33,34 @@ const TEXT = {
   },
 }
 
+
+// One plain sentence under each chart, so the reason reads at a glance.
+function takeaways(kind, rail, hist, col, before, after) {
+  const vals = (hist || []).map((h) => Number(h[col]) || 0)
+  const sorted = [...vals].filter((v) => v > 0).sort((a, b) => a - b)
+  const med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0
+  const low = vals.length ? Math.min(...vals) : 0
+  const gain = Math.max(after - before, 0).toFixed(1)
+  const mine = {
+    cash_limit: `They take out about ${money(med)} in cash a month. A limit of ${money(Math.max(med - (rail.amount || 0), 0))} saves ${money(rail.amount || 0)} where they have room to cut.`,
+    card_cap: `They spend about ${money(med)} a month on the card. The cap trims ${money(rail.amount || 0)} of it.`,
+    transfer_hold: `About ${money(med)} a month goes out in other transfers. Holding the large ones saves ${money(rail.save || 0)}.`,
+    standing_order: `About ${money(med)} a month goes out in other transfers. Pausing this one saves ${money(rail.save || 0)}.`,
+    loan_deferral: `They pay about ${money(med || rail.amount || 0)} on the loan every month, whatever happens to income. Pausing it frees all of that while income is down.`,
+    balance_alert: `Their balance fell as low as ${money(low)} in the past year. Under $500 is where trouble starts, so the alert fires there.`,
+  }[kind] || `Money out runs about ${money(med)} a month. This step trims ${money(rail.save || 0)} of it.`
+  const all = {
+    cash_limit: 'When income crashes, people cut cash, not bills. So cash is the realistic place to save.',
+    card_cap: 'When income crashes, people cut everyday spending, not bills. So this is a realistic place to save.',
+    transfer_hold: 'When income crashes, bills and loans don’t move, so flexible spending is where the savings are.',
+    standing_order: 'When income crashes, bills and loans don’t move, so flexible spending is where the savings are.',
+    loan_deferral: 'Unsteady income and a low balance each make default about 5× likelier. A shock brings both, so ask the lender before a payment is missed.',
+    balance_alert: 'Most overdrafts follow a near-miss by about a year. Catching the dip early leaves time to act.',
+  }[kind] || 'Under 3 months of runway, about 1 in 6 got overdrawn. With 12 or more, about 1 in 100. Every month helps.'
+  const buys = `On its own this adds ${gain} months: savings last ${after.toFixed(1)} months instead of ${before.toFixed(1)}.`
+  return [mine, all, buys]
+}
+
 export function RailExplain({ accountId, rail, before, after, onBack }) {
   const [hist, setHist] = useState(null)
   useEffect(() => {
@@ -54,6 +82,7 @@ export function RailExplain({ accountId, rail, before, after, onBack }) {
   const series = SERIES[rail.kind] || SERIES.customer_step
   const textKey = TEXT[rail.kind] ? rail.kind : 'runway'
   const t = TEXT[textKey]
+  const why = takeaways(rail.kind, rail, hist, series.col, before, after)
 
   return (
     <div className="dx">
@@ -79,6 +108,7 @@ export function RailExplain({ accountId, rail, before, after, onBack }) {
           ) : (
             <p className="dx-none">No monthly history for this account.</p>
           )}
+          <p className="dx-why">{why[0]}</p>
         </figure>
 
         <figure className="dx-fig">
@@ -89,6 +119,7 @@ export function RailExplain({ accountId, rail, before, after, onBack }) {
           {textKey === 'loan_deferral' && <OddsRatios />}
           {textKey === 'balance_alert' && <NearMiss />}
           {textKey === 'runway' && <RunwayBands before={before} after={after} />}
+          <p className="dx-why">{why[1]}</p>
         </figure>
 
         <figure className="dx-fig">
@@ -96,6 +127,7 @@ export function RailExplain({ accountId, rail, before, after, onBack }) {
             <span className="dx-fig-n">3</span> What it buys this customer
           </figcaption>
           <BeforeAfter before={before} after={after} />
+          <p className="dx-why">{why[2]}</p>
         </figure>
       </div>
 

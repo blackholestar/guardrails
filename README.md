@@ -98,6 +98,8 @@ by the store. Phone alerts go out as push notifications through [ntfy](https://n
 
 Full detail, code and caveats: [`findings/README.md`](findings/README.md) and
 [`findings/findings_walkthrough.ipynb`](findings/findings_walkthrough.ipynb).
+How we found them, step by step (the first plots, the surprises, and a lead we dropped):
+[`eda/eda.ipynb`](eda/eda.ipynb). Run it from the `eda/` folder with the project venv.
 
 - **The stress test predicts real trouble.** Runway if laid off, computed from 2024 data, against who was
   really overdrawn in 2025 (3,657 accounts): under 3 months, 17.7% overdrawn; 12+ months, 1.1%.

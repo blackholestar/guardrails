@@ -68,7 +68,33 @@ DEFAULT_CALL = {
 
 
 def _box(account_id: int) -> dict:
-    return SANDBOX.setdefault(account_id, {"settings": {}, "log": []})
+    box = SANDBOX.setdefault(account_id, {"settings": {}, "log": []})
+    box.setdefault("account_id", account_id)
+    return box
+
+
+def _pick_order(account_id: int | None, amount: float) -> dict | None:
+    """The account's real non-essential standing order closest to the approved amount, if it has one."""
+    if account_id is None:
+        return None
+    try:
+        import pandas as pd
+        from .details import DETAILS_DIR
+        o = pd.read_parquet(DETAILS_DIR / "orders.parquet")
+    except Exception:
+        return None
+    o = o[(o["account_id"] == account_id) & (o["purpose"] == "other") & (o["amount"] <= amount * 1.1)]
+    if o.empty:
+        return None
+    row = o.iloc[(o["amount"] - amount).abs().argsort().iloc[0]]
+    return {"order_id": int(row["order_id"]), "to_bank": str(row["to_bank"]), "to_account": str(row["to_account"]), "amount": float(row["amount"])}
+
+
+def _next_first() -> str:
+    import datetime as dt
+    d = dt.date.today()
+    nxt = dt.date(d.year + (d.month == 12), d.month % 12 + 1, 1)
+    return nxt.strftime("%b %-d")
 
 
 def check(call: str, args: dict, guardrail: dict) -> str | None:
@@ -102,8 +128,20 @@ def _apply(box: dict, call: str, args: dict) -> str:
         s["transfer_hold_over"] = args["threshold"]
         return f"Transfers over ${args['threshold']:,.0f} now need the customer's approval"
     if call == "pause_standing_order":
-        s["paused_order"] = args["monthly_amount"]
-        return f"Standing order of ${args['monthly_amount']:,.0f}/month paused"
+        amt = float(args["monthly_amount"])
+        s["paused_order"] = amt
+        order = _pick_order(box.get("account_id"), amt)
+        when = _next_first()
+        if order:
+            s["paused_order_info"] = {**order, "next": when}
+            text = (f"Standing order #{order['order_id']} paused: ${order['amount']:,.2f}/month to account "
+                    f"{order['to_account']} at bank {order['to_bank']}. The {when} payment won't go out")
+        else:
+            s["paused_order_info"] = {"amount": amt, "next": when}
+            text = f"Standing order of ${amt:,.0f}/month paused. The {when} payment won't go out"
+        from .notify import push
+        push(text + ". Undo any time in the app.", title="Standing order paused", tags="pause_button")
+        return text
     if call == "set_balance_alert":
         s["balance_alert_below"] = args["threshold"]
         return f"Alert set for balance below ${args['threshold']:,.0f}"
@@ -194,6 +232,8 @@ def undo_guardrail(account_id: int, guardrail: dict) -> dict:
     }.get(guardrail["kind"])
     if key:
         box["settings"].pop(key, None)
+        if key == "paused_order":
+            box["settings"].pop("paused_order_info", None)
     ev = {"t": time.time(), "tool": "undo", "args": {}, "status": "applied", "detail": f"Undone by the customer: {guardrail['label']}"}
     box["log"].append(ev)
     return {"source": "customer", "events": [ev], "settings": box["settings"]}

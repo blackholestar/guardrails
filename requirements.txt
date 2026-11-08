@@ -8,3 +8,4 @@ python-dotenv
 pytest
 scikit-learn
 jupyter
+matplotlib
