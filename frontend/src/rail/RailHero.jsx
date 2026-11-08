@@ -165,12 +165,12 @@ export default function RailHero() {
         </div>
 
         <div className="rh-copy rh-ch" data-ch="0">
-          <h1 className="rh-title">Stay on the road.</h1>
+          <h1 className="rh-title">Guardrails.</h1>
           <p className="rh-sub">
-            Guardrails shows how many months a Tangerine customer&rsquo;s savings would last after a job loss or a surprise
+            It shows how many months a Tangerine customer&rsquo;s savings would last after a job loss or a surprise
             bill, and turns on the protections that keep them going.
           </p>
-          <p className="rh-hint">Scroll to drive</p>
+          <p className="rh-hint">Scroll to drive <span aria-hidden="true">↓</span></p>
         </div>
 
         {CHAPTERS.map((c, i) =>

@@ -26,14 +26,14 @@
 
 .rh-copy {
   position: absolute; left: var(--m); right: var(--m); top: clamp(84px, 13vh, 132px);
-  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 32px; align-items: end;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start;
   pointer-events: none;
 }
 .rh-title {
   margin: 0; font-size: clamp(3.4rem, 1rem + 7.4vw, 8.5rem); font-weight: 600;
   letter-spacing: -0.05em; line-height: 0.9;
 }
-.rh-sub { margin: 0 0 0.6em; max-width: 34ch; font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.3rem); line-height: 1.4; }
+.rh-sub { margin: 0; max-width: 46ch; font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.3rem); line-height: 1.4; }
 
 .rh-tag {
   position: absolute; left: 0; top: 0; pointer-events: none; will-change: transform;
@@ -48,7 +48,13 @@
 
 .rs { position: relative; height: calc(var(--chapters) * 100svh); background: var(--paper, #e6e9ea); }
 .rh-ch { will-change: opacity, transform; }
-.rh-hint { grid-column: 1 / -1; margin: 28px 0 0; font-size: 0.875rem; font-weight: 500; color: var(--ink-soft); }
+.rh-hint { /* top right corner of the first screen */
+  position: absolute; right: 0; top: calc(28px - clamp(84px, 13vh, 132px)); margin: 0;
+  font-size: 0.9375rem; font-weight: 600; color: var(--ink); display: flex; gap: 8px; align-items: center;
+}
+.rh-hint span { display: inline-block; animation: rh-nudge 1.6s ease-in-out infinite; }
+@keyframes rh-nudge { 50% { transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .rh-hint span { animation: none; } }
 .rh-step {
   position: absolute; left: var(--m); top: clamp(84px, 13vh, 132px); width: min(640px, calc(100vw - 2 * var(--m)));
   visibility: hidden; opacity: 0;
