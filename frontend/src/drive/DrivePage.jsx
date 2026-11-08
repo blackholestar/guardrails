@@ -188,7 +188,6 @@ export default function DrivePage({ initialAccount }) {
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
   const [agentLog, setAgentLog] = useState([]) // the Guardian's tool calls, newest first
   const [pending, setPending] = useState('') // guardrail id the agent is working on
-  const [safety, setSafety] = useState(null) // results of the last safety test
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
@@ -252,7 +251,6 @@ export default function DrivePage({ initialAccount }) {
       const d = await callAgent(c.id, x, { ...(turningOn ? opts : { undo: true }), shock })
       const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
       const real = entries.filter((e) => !e.simulated)
-      if (opts.simulate_attack) setSafety(entries.filter((e) => e.simulated))
       if (!opts.simulate_attack || !on[x.id]) setAgentLog((l) => [...real.reverse(), ...l].slice(0, 14))
       const applied = d.events.some((e) => e.status === 'applied' && !e.simulated)
       if (turningOn && applied) setOn((o) => ({ ...o, [x.id]: true }))
@@ -287,7 +285,6 @@ export default function DrivePage({ initialAccount }) {
       setReadTwist('')
       setOn({})
       setAgentLog([])
-      setSafety(null)
       // start the sandbox fresh too: no payments or limits from an earlier run
       fetch(`/api/customer/${d.account_id}/reset`, { method: 'POST' }).catch(() => {})
       return d.profile
@@ -605,28 +602,7 @@ export default function DrivePage({ initialAccount }) {
                       <a className="dv-actas" href={`#/shop/fresh-basket?account=${c.id}`} target="_blank" rel="noreferrer">Fresh Basket →</a>
                       <a className="dv-actas" href={`#/shop/volt?account=${c.id}`} target="_blank" rel="noreferrer">Volt →</a>
                     </span>
-                    <button type="button" className="dv-adjust" disabled={!!pending || !rails.length} onClick={() => toggleRail(rails.find((x) => on[x.id]) || rails[0], { simulate_attack: true })}>
-                      Test the safety rules
-                    </button>
                   </div>
-                  {safety && (
-                    <div className="dv-safety">
-                      <p className="dv-safety-title">
-                        Safety test: {safety.filter((e) => e.status === 'refused').length} of {safety.length} dangerous requests blocked
-                        <span className="dv-who">what if the agent were tricked? The rules in our code stop it.</span>
-                      </p>
-                      <ol className="dv-agent-log">
-                        {safety.map((e) => (
-                          <li key={e.key} className={`is-${e.status}`}>
-                            <span className="dv-agent-mark" aria-hidden="true">{e.status === 'applied' ? '✓' : '✗'}</span>
-                            <code>{e.tool}({fmtArgs(e.args)})</code>
-                            <span className="dv-agent-detail">{e.status === 'refused' ? 'Blocked: ' : ''}{e.detail}</span>
-                          </li>
-                        ))}
-                      </ol>
-                      <button type="button" className="dv-adjust" onClick={() => setSafety(null)}>Hide test</button>
-                    </div>
-                  )}
                   {payments.length > 0 && (
                     <>
                       <p className="dv-agent-sub">Payments it reviewed</p>
