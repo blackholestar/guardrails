@@ -42,7 +42,7 @@
 }
 .dv-navlink:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-.dv-main { width: min(1240px, calc(100vw - 2 * var(--m))); margin: 0 auto; padding: 28px 0 160px; }
+.dv-main { width: min(1840px, calc(100vw - 2 * var(--m))); margin: 0 auto; padding: 28px 0 160px; }
 .dv-head { margin-bottom: 24px; }
 .dv-title { margin: 0; font-size: clamp(2rem, 1.2rem + 2.4vw, 3.25rem); font-weight: 600; letter-spacing: -0.045em; line-height: 1; }
 .dv-sub { margin: 10px 0 0; font-size: 1rem; color: var(--ink-soft); font-weight: 500; }
