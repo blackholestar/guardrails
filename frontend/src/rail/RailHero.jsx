@@ -129,9 +129,18 @@ export default function RailHero() {
       }
       if (tagRef.current) tagRef.current.style.opacity = stage > LAST - 0.6 ? 0 : 1
     }
+    // left and right arrows step through the chapters like down and up (not while typing)
+    const onKey = (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+      if (e.target.closest?.('input, textarea, select, [contenteditable]')) return
+      e.preventDefault()
+      window.scrollBy({ top: (e.key === 'ArrowRight' ? 1 : -1) * window.innerHeight, behavior: 'smooth' })
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('keydown', onKey)
     return () => {
+      window.removeEventListener('keydown', onKey)
       window.removeEventListener('scroll', onScroll)
       root.classList.remove('rs-snap')
       history.scrollRestoration = restore
