@@ -75,6 +75,36 @@ function railFromAction(a, i) {
   return { id: `a${i}`, label, who, save, how: a.how, evidence: a.evidence, capped: a.status === 'capped' }
 }
 
+// ---------- "Try a purchase": the guardrails question a card payment ----------
+const ESSENTIAL = /\b(rent|mortgage|hydro|electric|utilit|water|gas bill|heating|insurance|phone bill|internet|bill|loan payment|daycare|tuition|pharmacy|prescription|groceries|grocery|supermarket|food)\b/i
+const CASH = /\b(atm|cash|withdraw)/i
+const TODAY = new Date(2026, 10, 8) // demo date: Nov 8, 2026
+
+function monthFromNow(m) {
+  const d = new Date(TODAY)
+  d.setDate(d.getDate() + Math.round(m * 30.4))
+  return d.toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })
+}
+
+// A little cheeky, always built from this customer's real numbers.
+function holdMessage({ amount, where, before, after, goal, P, loanStatus }) {
+  const days = Math.max(Math.round((before - after) * 30.4), 1)
+  const dayWord = `${days} day${days === 1 ? '' : 's'}`
+  const runsOut = monthFromNow(after)
+  const was = monthFromNow(before)
+  const when = runsOut === was ? `a little sooner, still in ${runsOut}` : `in ${runsOut} instead of ${was}`
+  const lines = [
+    `${money(amount)}${where ? ` on ${where}` : ''} is ${dayWord} of runway. Your savings would run out ${when}.`,
+    P > 0
+      ? `Heads up: at this rate your ${money(P)} loan payment starts bouncing around ${runsOut}${loanStatus === 'D' ? ', and that loan is already behind' : ''}. Your lender does not accept ${where || 'this'} as payment.`
+      : `At this rate you're out of money by ${runsOut}. ${where ? `The ${where} will` : 'It will'} still be there next month. Will your savings?`,
+    after < goal
+      ? `Your goal is ${goal} months of runway. After this you'd have ${after.toFixed(1)}. Future you has asked us to say no, politely.`
+      : `You'd still clear your ${goal}-month goal, but only by ${(after - goal).toFixed(1)} months. Living dangerously.`,
+  ]
+  return lines[(Math.round(amount) + (where || '').length) % lines.length]
+}
+
 function openStory() {
   window.location.hash = '#/'
 }
@@ -157,6 +187,7 @@ export default function DrivePage({ initialAccount }) {
   const [source, setSource] = useState(null) // 'ai' | 'rules' | 'preset' | 'manual'
   const [plan, setPlan] = useState(null)
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
+  const [spent, setSpent] = useState(0) // purchases the customer approved during the demo
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [adjust, setAdjust] = useState(false)
@@ -181,16 +212,19 @@ export default function DrivePage({ initialAccount }) {
 
   const r = useMemo(() => {
     if (!c) return null
-    const shocked = runway(c, shock)
-    const withSave = (sv) => runway(c, { ...shock, extra_monthly: (shock.extra_monthly || 0) - sv })
+    const sh = { ...shock, one_off_cost: (shock.one_off_cost || 0) + spent }
+    const shocked = runway(c, sh)
+    const withSave = (sv) => runway(c, { ...sh, extra_monthly: (sh.extra_monthly || 0) - sv })
     const saving = rails.reduce((t, x) => t + (on[x.id] ? x.save : 0), 0)
     return {
+      sh,
+      saving,
       base: runway(c),
       shocked,
       guarded: withSave(saving),
       alone: Object.fromEntries(rails.map((x) => [x.id, Math.max(withSave(x.save).months - shocked.months, 0)])),
     }
-  }, [c, shock, on, rails])
+  }, [c, shock, on, rails, spent])
 
   const anyGuard = rails.some((x) => on[x.id])
   const final = r ? (anyGuard ? r.guarded : r.shocked) : null
@@ -207,6 +241,51 @@ export default function DrivePage({ initialAccount }) {
     return () => clearTimeout(t)
   }, [railKey])
   const nextRail = rails.find((x) => !on[x.id])?.id
+
+  const [buyAmt, setBuyAmt] = useState('')
+  const [buyWhere, setBuyWhere] = useState('')
+  const [toast, setToast] = useState(null)
+  const [log, setLog] = useState([])
+  const cashRail = rails.find((x) => on[x.id] && /cash limit/i.test(x.label))
+
+  function tryPurchase(amtIn, whereIn) {
+    if (!r) return
+    const amount = Number(String(amtIn).replace(/[^\d.]/g, ''))
+    const where = (whereIn || '').trim()
+    if (!amount) return
+    const months = (extra) => runway(c, { ...r.sh, one_off_cost: r.sh.one_off_cost + extra, extra_monthly: (r.sh.extra_monthly || 0) - r.saving })
+    const before = months(0)
+    const after = months(amount)
+    const add = (entry) => setLog((l) => [{ id: Date.now(), amount, where, ...entry }, ...l].slice(0, 6))
+    if (ESSENTIAL.test(where)) {
+      setSpent((x) => x + amount)
+      add({ verdict: 'approved', why: 'Essential payment: always goes through.' })
+      setToast({ kind: 'ok', title: 'Approved', text: `${money(amount)} for ${where}. Essentials always go through.` })
+      return
+    }
+    if (CASH.test(where) && cashRail) {
+      add({ verdict: 'held', why: `Over the new cash limit (${cashRail.label.toLowerCase()}).` })
+      setToast({ kind: 'hold', amount, where, before: before.months, after: after.months, text: `That's over the cash limit you agreed to. ${holdMessage({ amount, where, before: before.months, after: after.months, goal, P: c.P, loanStatus: meta.loan_status })}` })
+      return
+    }
+    const drop = before.months - after.months
+    // small purchases never get held; bigger ones do when they cost real runway or push it under the goal
+    if (amount >= 100 && !before.noShortfall && (drop >= 0.25 || (after.months < goal && drop >= 0.05))) {
+      add({ verdict: 'held', why: `Runway ${before.label} → ${after.label} months.` })
+      setToast({ kind: 'hold', amount, where, before: before.months, after: after.months, text: holdMessage({ amount, where, before: before.months, after: after.months, goal, P: c.P, loanStatus: meta.loan_status }) })
+      return
+    }
+    setSpent((x) => x + amount)
+    add({ verdict: 'approved', why: before.noShortfall ? 'Income covers spending.' : `Small enough: runway stays ${after.label} months.` })
+    setToast({ kind: 'ok', title: 'Approved', text: `${money(amount)}${where ? ` at ${where}` : ''}. Runway stays ${fmtMonths(after)}.` })
+  }
+
+  function resolveHold(approve) {
+    if (!toast) return
+    if (approve) setSpent((x) => x + toast.amount)
+    setLog((l) => l.map((e, i) => (i === 0 && e.verdict === 'held' ? { ...e, verdict: approve ? 'approved anyway' : 'cancelled' } : e)))
+    setToast(null)
+  }
 
   const steel = r ? (hasShock ? r.shocked : r.base) : null
   const shownMonths = useCountUp(final ? Math.min(final.months, 120) : null)
@@ -225,6 +304,8 @@ export default function DrivePage({ initialAccount }) {
       setPlan(null)
       setReadTwist('')
       setOn({})
+      setSpent(0)
+      setLog([])
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
@@ -542,8 +623,81 @@ export default function DrivePage({ initialAccount }) {
               </>
             )}
           </section>
+
+          {/* try a purchase: the guardrails question a card payment */}
+          <section className="dv-card dv-card-buy" aria-labelledby="c-buy">
+            <h2 id="c-buy" className="dv-label">Try a purchase</h2>
+            {!ready ? (
+              <Skeleton lines={2} />
+            ) : (
+              <>
+                <form
+                  className="dv-buy"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    tryPurchase(buyAmt, buyWhere)
+                  }}
+                >
+                  <label className="dv-field dv-field-amt">
+                    <span>Amount</span>
+                    <input inputMode="decimal" placeholder="$450" value={buyAmt} onChange={(e) => setBuyAmt(e.target.value)} />
+                  </label>
+                  <label className="dv-field dv-field-where">
+                    <span>Where</span>
+                    <input placeholder="e.g. electronics store, rent, ATM" value={buyWhere} onChange={(e) => setBuyWhere(e.target.value)} />
+                  </label>
+                  <button type="submit" className="dv-pay">Pay</button>
+                </form>
+                <p className="dv-try">
+                  Try{' '}
+                  {[
+                    [1800, 'gaming PC'],
+                    [400, 'concert tickets'],
+                    [60, 'groceries'],
+                    [1450, 'rent'],
+                    [500, 'ATM'],
+                  ].map(([a, w]) => (
+                    <button key={w} type="button" className="dv-link" onClick={() => { setBuyAmt(String(a)); setBuyWhere(w); tryPurchase(a, w) }}>
+                      {money(a)} {w}
+                    </button>
+                  ))}
+                </p>
+                {log.length > 0 && (
+                  <ul className="dv-log">
+                    {log.map((e) => (
+                      <li key={e.id}>
+                        <span className={`dv-verdict-tag v-${e.verdict.split(' ')[0]}`}>{e.verdict}</span>
+                        {money(e.amount)}{e.where ? ` · ${e.where}` : ''} <span className="dv-who">{e.why}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {spent > 0 && <p className="dv-src">Approved purchases so far: {money(spent)}, taken from savings.</p>}
+              </>
+            )}
+          </section>
         </div>
       </main>
+
+      {toast && (
+        <div className={`dv-toast is-${toast.kind}`} role="alertdialog" aria-labelledby="dv-toast-title" aria-describedby="dv-toast-text">
+          <p className="dv-toast-app"><span className="dv-toast-icon" aria-hidden="true" /> Tangerine · Guardrails <span className="dv-toast-now">now</span></p>
+          <p id="dv-toast-title" className="dv-toast-title">
+            {toast.kind === 'hold' ? `Hold on. ${money(toast.amount)}${toast.where ? ` at ${toast.where}` : ''}?` : toast.title}
+          </p>
+          <p id="dv-toast-text" className="dv-toast-text">{toast.text}</p>
+          {toast.kind === 'hold' ? (
+            <div className="dv-toast-actions">
+              <button type="button" onClick={() => resolveHold(false)} autoFocus>Cancel it</button>
+              <button type="button" className="ghost" onClick={() => resolveHold(true)}>Approve anyway</button>
+            </div>
+          ) : (
+            <div className="dv-toast-actions">
+              <button type="button" className="ghost" onClick={() => setToast(null)}>OK</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* the console */}
       <form className={`dv-console${r ? ' is-live' : ''}`} onSubmit={go} noValidate>
