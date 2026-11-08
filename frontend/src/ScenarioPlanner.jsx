@@ -31,12 +31,12 @@ const runwayText = (r) =>
 
 function VarTable({ variables }) {
   return (
-    <table className="var-table">
+    <table className="tbl var-table">
       <tbody>
         {Object.keys(VAR_LABELS).map((k) => (
           <tr key={k}>
             <th scope="row">{VAR_LABELS[k]}</th>
-            <td>{formatVar(k, variables[k])}</td>
+            <td className="r num strong">{formatVar(k, variables[k])}</td>
           </tr>
         ))}
       </tbody>
@@ -46,9 +46,9 @@ function VarTable({ variables }) {
 
 function Outcome({ title, result }) {
   return (
-    <div className="metric">
+    <div className="card metric">
       <div className="metric-label">{title}</div>
-      <div className="metric-value">{runwayText(result)}</div>
+      <div className="metric-value num">{runwayText(result)}</div>
       <div className="outcome-detail">
         Buffer left {money(result.buffer_left)} · monthly gap {money(result.gap)}
       </div>
@@ -61,13 +61,14 @@ const CARD_ORDER = ['I', 'F', 'S', 'B', 'H', 'P', 'gap', 'runway']
 const signed = (d, fmt) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${fmt(Math.abs(d))}`
 const same = (d) => Math.abs(d) < 0.005
 
-function ChangeCard({ info, change }) {
+// invert: a decrease is good (green) and an increase is bad (red), e.g. the monthly gap.
+function ChangeCard({ info, change, invert = false }) {
   const isRunway = info && change.before_label !== undefined
   const fmt = isRunway ? (v) => `${v.toFixed(1)} months` : money
   const label = (v, l) => (isRunway && typeof l === 'string' ? l : fmt(v))
   const unchanged = same(change.delta)
   return (
-    <div className="metric">
+    <div className="card metric">
       <div className="metric-label">
         {info.label}
         {info.help && (
@@ -76,11 +77,21 @@ function ChangeCard({ info, change }) {
           </span>
         )}
       </div>
-      <div className="metric-value change-value">
+      <div className="metric-value num change-value">
         {!unchanged && <s className="old-value">{label(change.before, change.before_label)}</s>}
         <span>{label(change.after, change.after_label)}</span>
       </div>
-      <div className="change-delta">{unchanged ? 'no change' : signed(change.delta, fmt)}</div>
+      <div className={`change-delta num${unchanged ? '' : (change.delta > 0) !== invert ? ' up' : ' down'}`}>{unchanged ? 'no change' : signed(change.delta, fmt)}</div>
+    </div>
+  )
+}
+
+function ChangeCards({ metrics, changes }) {
+  return (
+    <div className="metrics">
+      {CARD_ORDER.filter((k) => metrics[k] && changes[k]).map((k) => (
+        <ChangeCard key={k} info={metrics[k]} change={changes[k]} invert={k === 'gap'} />
+      ))}
     </div>
   )
 }
@@ -118,7 +129,7 @@ export default function ScenarioPlanner({ accountId, metrics }) {
       {accountId == null ? (
         <p className="hint">Look up an account above to try a scenario.</p>
       ) : (
-        <form onSubmit={onSubmit} className="planner-form">
+        <form onSubmit={onSubmit} className="card planner-form">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -128,7 +139,7 @@ export default function ScenarioPlanner({ accountId, metrics }) {
             aria-label="Describe your scenario"
           />
           <div className="planner-actions">
-            <button type="submit" disabled={loading || !text.trim()}>
+            <button className="btn-primary" type="submit" disabled={loading || !text.trim()}>
               {loading ? 'Planning…' : 'Make a plan'}
             </button>
             <span className="hint">Try:</span>
@@ -141,21 +152,33 @@ export default function ScenarioPlanner({ accountId, metrics }) {
         </form>
       )}
 
-      {error && <div className="banner error">{error}</div>}
+      {error && <div className="ds-error" role="alert">{error}</div>}
 
       {result && (
         <div className="planner-result">
           <h3>What changes</h3>
-          <p>{result.impact_summary}</p>
-          <VarTable variables={result.impact.variables} />
+          <div className="card text-card">
+            <p>{result.impact_summary}</p>
+            <VarTable variables={result.impact.variables} />
+          </div>
+          {metrics && result.impact.metrics && (
+            <>
+              <h3>Your numbers after the event</h3>
+              <ChangeCards metrics={metrics} changes={result.impact.metrics} />
+            </>
+          )}
+
+          <hr className="planner-divide" />
 
           <h3>The plan</h3>
-          <p>{result.plan.description}</p>
-          <p className="justification"><strong>Why:</strong> {result.plan.justification}</p>
-          <VarTable variables={result.plan.variables} />
+          <div className="card text-card">
+            <p>{result.plan.description}</p>
+            <p className="justification"><strong>Why:</strong> {result.plan.justification}</p>
+            <VarTable variables={result.plan.variables} />
+          </div>
 
           <h3>Runway</h3>
-          <div className="grid">
+          <div className="metrics metrics-3">
             <Outcome title="Before" result={result.baseline} />
             <Outcome title="After the event" result={result.impact.result} />
             <Outcome title="With the plan" result={result.plan.result} />
@@ -163,16 +186,12 @@ export default function ScenarioPlanner({ accountId, metrics }) {
           {metrics && (
             <>
               <h3>Your numbers with the plan</h3>
-              <div className="grid">
-                {CARD_ORDER.filter((k) => metrics[k] && result.plan.metrics[k]).map((k) => (
-                  <ChangeCard key={k} info={metrics[k]} change={result.plan.metrics[k]} />
-                ))}
-              </div>
+              <ChangeCards metrics={metrics} changes={result.plan.metrics} />
             </>
           )}
           <p className="caption">Generated by {result.model}. This is an estimate, not financial advice.</p>
 
-          <details>
+          <details className="raw">
             <summary>Raw output (JSON)</summary>
             <pre>{JSON.stringify(result, null, 2)}</pre>
           </details>

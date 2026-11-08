@@ -110,6 +110,9 @@ adjustments (e.g. negative extra_monthly for cuts sized to the customer's real s
 for part-time work). Keep cuts below the customer's monthly spending S and do not touch fixed costs F unless \
 justified. Do not assume income the customer has no basis to earn.
 - plan.description: concrete steps in plain language. plan.justification: why it fits, citing the customer's numbers.
+- impact_summary: 2-3 plain sentences explaining why the event moves the customer's numbers (income, fixed costs, \
+spending, savings buffer, household bills, loan payment, monthly gap, runway), naming only the ones it affects. \
+Do not quote computed dollar totals or runway figures.
 - Do NOT calculate runway or any totals; code does that. Only choose the variable values.
 - If the scenario is vague, make a reasonable assumption and state it in impact_summary.
 

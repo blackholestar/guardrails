@@ -1,0 +1,229 @@
+/* Guardrails landing — direction "sentence-as-layout" (seed 1231844081), palette re-mapped from the subject:
+   asphalt ground, road-paint ink, Tangerine orange accent, Ontario guide-sign green and galvanized steel fields. */
+.lp {
+  --asphalt: #202326;
+  --asphalt-2: #2b2f33;
+  --paint: #efefed;
+  --paper: #e6e9ea;
+  --ink: #1a1d20;
+  --ink-soft: #4b5156;
+  --paint-soft: #cfd3d4;
+  --orange: #ef6a1a;
+  --orange-ink: #1a1d20;
+  --green: #0d5a3a;
+  --steel: #b4bbc0;
+
+  --step-small: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+  --step-display: clamp(3rem, 0.6rem + 6.4vw, 6.25rem);
+
+  --m: clamp(16px, 2.2vw, 32px); /* the one pair of outer margins */
+  --gap-section: clamp(120px, 14vw, 200px);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  font-family: 'Switzer', ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--step-body);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  background: var(--asphalt);
+  font-feature-settings: 'tnum' 1;
+}
+.lp *,
+.lp *::before,
+.lp *::after { box-sizing: border-box; }
+.lp img { display: block; max-width: 100%; }
+.lp a { color: inherit; }
+.lp h1, .lp h2, .lp p, .lp figure { margin: 0; }
+
+/* ---------- bar ---------- */
+.lp-bar {
+  position: fixed; inset: 0 0 auto 0; z-index: 20;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px var(--m);
+  transition: background-color 300ms var(--ease), color 300ms var(--ease);
+}
+.lp-bar[data-on='paper'] { background: var(--paper); color: var(--ink); }
+.lp-bar[data-on='road'] { background: var(--asphalt); color: var(--paint); }
+.lp-bar[data-on='green'] { background: var(--green); color: var(--paint); }
+.lp-bar[data-on='orange'] { background: var(--orange); color: var(--ink); }
+.lp-mark { font-weight: 600; font-size: 1.75rem; letter-spacing: -0.04em; text-decoration: none; }
+.lp-links { display: flex; gap: clamp(14px, 2vw, 28px); align-items: center; font-size: var(--step-small); font-weight: 500; }
+.lp-links a { text-decoration: none; }
+.lp-links a:not(.lp-btn):hover { text-decoration: underline; text-underline-offset: 4px; }
+.lp-btn {
+  background: var(--orange); color: var(--orange-ink); padding: 10px 16px; border-radius: 0;
+  font-weight: 600; transition: transform 160ms var(--ease), background-color 160ms;
+}
+.lp-bar[data-on='orange'] .lp-btn { background: var(--ink); color: var(--paint); }
+.lp-btn:hover { transform: translateY(-2px); }
+.lp-btn:active { transform: translateY(0); }
+.lp a:focus-visible, .lp button:focus-visible, .lp input:focus-visible {
+  outline: 3px solid var(--orange); outline-offset: 3px;
+}
+
+/* ---------- hero: sky field above, road field below, headline across the seam ---------- */
+.hero { position: relative; height: 130svh; overflow: hidden; }
+.hero-fields { position: absolute; inset: 0; display: grid; grid-template-rows: 50svh 1fr; }
+.f-up { background: var(--paper); }
+.f-down { background: var(--asphalt); }
+.hl {
+  position: absolute; left: 0; right: 0; top: calc(50svh - 1.27em);
+  font-size: clamp(5rem, 1rem + 10vw, 9.5rem);
+  font-weight: 600; letter-spacing: -0.045em; line-height: 0.95;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.hl-line { display: block; white-space: nowrap; }
+.hl-ink { color: #ffffff; mix-blend-mode: difference; }
+.hl-slot {
+  mix-blend-mode: normal; isolation: isolate;
+  display: inline-block; vertical-align: baseline; height: 0.7em; width: 2.2em;
+  margin-left: 0.04em; overflow: hidden; border-radius: 0.06em; position: relative; top: 0.02em;
+}
+.hl-slot img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+.hero-sub {
+  position: absolute; left: 50%; transform: translateX(-50%); top: calc(100svh - 56px); translate: 0 -100%;
+  width: min(46ch, calc(100vw - 2 * var(--m))); text-align: center;
+  color: var(--paint); font-size: var(--step-lead); line-height: 1.4;
+}
+
+/* ---------- photo band (the slot opens onto the road) ---------- */
+.band { position: relative; height: 72svh; overflow: hidden; background: var(--asphalt); }
+.band img { width: 100%; height: 100%; object-fit: cover; animation: drift 24s var(--ease) infinite alternate; }
+.band figcaption {
+  position: absolute; left: var(--m); bottom: 16px; color: var(--paint); font-size: var(--step-small);
+  background: var(--asphalt); padding: 4px 8px;
+}
+@keyframes drift { from { transform: scale(1.02); } to { transform: scale(1.1) translateX(-1.5%); } }
+
+/* ---------- chapters ---------- */
+.ch { padding: var(--gap-section) var(--m); }
+.ch-green { background: var(--green); color: var(--paint); }
+.ch-paper { background: var(--paper); color: var(--ink); }
+.ch-road { background: var(--asphalt); color: var(--paint); }
+.ch-orange { background: var(--orange); color: var(--ink); }
+.h-q { font-size: var(--step-head); font-weight: 600; letter-spacing: -0.035em; line-height: 1; }
+.h-big { font-size: var(--step-display); font-weight: 600; letter-spacing: -0.045em; line-height: 0.95; max-width: 12ch; }
+
+/* stats: figure set by a slider */
+.stats { min-height: 88svh; display: flex; flex-direction: column; justify-content: space-between; gap: 64px; }
+.slider { width: min(440px, 100%); margin-top: 28px; }
+.slider label { display: flex; justify-content: space-between; font-weight: 500; }
+.slider output { font-weight: 600; }
+.slider input[type='range'] { width: 100%; margin: 14px 0 6px; accent-color: var(--orange); height: 28px; }
+.slider-ends { display: flex; justify-content: space-between; font-size: var(--step-small); color: var(--paint-soft); }
+.stats-bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; }
+.big-figure { font-size: clamp(8.5rem, 19vw, 20rem); font-weight: 600; letter-spacing: -0.06em; line-height: 0.8; }
+.big-figure .unit { font-size: 0.32em; letter-spacing: -0.02em; margin-left: 0.05em; }
+.working { max-width: 32ch; font-size: var(--step-body); }
+
+/* how: stages as one bar */
+.how .stagebar { display: flex; gap: 6px; height: 22vh; min-height: 140px; margin-top: 64px; }
+.seg { flex-basis: 0; min-width: 12%; padding: 20px; position: relative; }
+.seg-steel { background: var(--steel); color: var(--ink); }
+.seg-orange { background: var(--orange); color: var(--ink); }
+.seg-dur { font-size: var(--step-lead); font-weight: 600; letter-spacing: -0.02em; }
+.stage-notes { display: flex; gap: 6px; margin-top: 16px; }
+.stage-notes p { flex-basis: 0; min-width: 12%; max-width: 34ch; padding-right: 16px; }
+
+/* features: statements on colour fields */
+.field { position: relative; min-height: 76svh; padding: var(--m); }
+@media (max-width: 1100px) { .field { min-height: 58svh; } }
+.fld-road { background: var(--asphalt); color: var(--paint); }
+.fld-orange { background: var(--orange); color: var(--ink); }
+.fld-green { background: var(--green); color: var(--paint); }
+.fld-steel { background: var(--steel); color: var(--ink); }
+.fld-text { position: absolute; top: clamp(96px, 12vh, 140px); left: 58%; width: min(32ch, 36vw); }
+.fld-phrase {
+  position: absolute; left: var(--m); bottom: var(--m);
+  font-size: var(--step-display); font-weight: 600; letter-spacing: -0.045em; line-height: 0.92; max-width: 9ch;
+}
+.field.alt .fld-text { left: 8.33%; }
+.field.alt .fld-phrase { left: auto; right: var(--m); text-align: right; }
+
+/* twist: the headline you can type */
+.twist { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: clamp(24px, 4vw, 64px); align-items: start; min-height: 88svh; }
+.twist-input {
+  display: block; width: 100%; margin-top: 24px; padding: 0; border: 0; background: transparent;
+  font: inherit; font-size: var(--step-display); font-weight: 600; letter-spacing: -0.04em;
+  color: var(--ink); caret-color: var(--orange); border-bottom: 4px solid transparent;
+}
+.twist-input:focus-visible { outline: none; border-bottom-color: var(--orange); }
+.twist-answer { margin-top: 48px; max-width: 560px; background: #f7f8f8; padding: 20px 24px; }
+.ta-title { font-weight: 600; margin-bottom: 8px; }
+.ta-row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; }
+.ta-row + .ta-row { border-top: 1px solid #dfe3e5; } /* taste-skill-ignore: row rules inside the data-ui answer fragment */
+.ta-total { font-weight: 600; }
+.lp .muted { color: var(--ink-soft); }
+.lp p { max-width: 65ch; }
+.foot-meta span { max-width: 62ch; }
+.twist-examples { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 40px; }
+.ex {
+  font: inherit; background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--orange); text-decoration-thickness: 2px;
+}
+.ex:hover { color: var(--ink-soft); }
+.twist-photo { align-self: center; }
+.twist-photo img { width: 100%; aspect-ratio: 4 / 5; max-height: 72vh; object-fit: cover; object-position: 60% 30%; }
+.twist-photo figcaption { font-size: var(--step-small); color: var(--ink-soft); margin-top: 8px; }
+
+/* cta: a sentence with a blank */
+.cta { min-height: 72svh; display: flex; align-items: center; }
+.cta-sentence { font-size: var(--step-display); font-weight: 600; letter-spacing: -0.04em; line-height: 1.02; }
+.cta-input {
+  font: inherit; letter-spacing: inherit; width: 3.6em; height: 1em; padding: 0 0.12em; border: 0;
+  background: var(--asphalt-2); color: var(--paint); vertical-align: baseline;
+}
+.cta-go {
+  font: inherit; letter-spacing: inherit; height: 1em; padding: 0 0.16em; border: 0; cursor: pointer;
+  background: var(--orange); color: var(--orange-ink); line-height: 1; transition: transform 160ms var(--ease);
+}
+.cta-go:hover { transform: translateY(-3px); }
+.cta-note { margin-top: 28px; color: var(--paint-soft); font-size: var(--step-body); }
+
+/* footer: contact as the headline */
+.foot { min-height: 90svh; display: flex; flex-direction: column; gap: 32px; padding-top: 40px; }
+.foot-top { display: flex; gap: 32px; justify-content: space-between; align-items: baseline; flex-wrap: wrap; font-size: var(--step-small); }
+.foot-top p { max-width: 36ch; }
+.foot-photo { height: 34svh; overflow: hidden; }
+.foot-photo img { width: 100%; height: 100%; object-fit: cover; }
+.foot-contact {
+  font-size: var(--step-display); font-weight: 600; letter-spacing: -0.045em; line-height: 0.95;
+  text-decoration: none; overflow-wrap: anywhere;
+}
+.foot-contact:hover { text-decoration: underline; text-decoration-thickness: 0.06em; }
+.foot-meta { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 24px; font-size: var(--step-small); }
+.foot-meta span:last-child { text-align: right; }
+
+/* ---------- entrances (once, staggered; content visible without script) ---------- */
+html.js-reveal .lp [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease), transform 700ms var(--ease); }
+html.js-reveal .lp [data-reveal].in { opacity: 1; transform: none; }
+html.js-reveal .lp [data-reveal]:nth-child(2) { transition-delay: 80ms; }
+html.js-reveal .lp [data-reveal]:nth-child(3) { transition-delay: 160ms; }
+@media (prefers-reduced-motion: reduce) {
+  html.js-reveal .lp [data-reveal] { transform: none; transition: opacity 300ms; }
+  .band img { animation: none; }
+  .lp-btn:hover, .cta-go:hover { transform: none; }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 720px) {
+  .lp-links a:not(.lp-btn) { display: none; }
+  .hero-fields { grid-template-rows: 46svh 1fr; }
+  .hl { font-size: 15vw; top: calc(46svh - 1.27em); }
+  .hero-sub { font-size: 1rem; width: min(28ch, 90vw); top: calc(100svh - 40px); }
+  .stats-bottom { flex-direction: column; align-items: flex-start; }
+  .big-figure { font-size: 30vw; }
+  .how .stagebar { flex-direction: column; height: auto; }
+  .seg { min-height: 72px; flex-basis: auto; }
+  .stage-notes { flex-direction: column; }
+  .field { min-height: 64svh; }
+  .fld-text { left: var(--m) !important; width: 80%; top: 72px; }
+  .fld-phrase { font-size: 13vw; left: var(--m) !important; right: auto !important; text-align: left !important; }
+  .twist { grid-template-columns: 1fr; }
+  .twist-input { font-size: 11vw; }
+  .foot-meta { grid-template-columns: 1fr; }
+  .foot-meta span:last-child { text-align: left; }
+}

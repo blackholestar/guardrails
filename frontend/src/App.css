@@ -1,139 +1,80 @@
-.app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 2rem 1rem 4rem;
-  text-align: left;
+/* App page (AccountPage + ScenarioPlanner). Builds on dashboard.css: same variables, card, button and table styles.
+   This file only covers the elements dashboard.css has no rule for. */
+.ds { color-scheme: light; }
+
+.ds .ac-main { padding-bottom: 48px; }
+.ds .ac-head { padding: 28px 0 16px; }
+.ds .ac-head h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.ds .caption { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.ds .hint { color: var(--muted); margin: 12px 0; }
+
+.ds .ac-lookup { align-items: center; margin-bottom: 16px; }
+.ds .ac-lookup label { font-weight: 600; margin-right: 4px; }
+.ds .ac-lookup input { width: 160px; }
+
+.ds button.link {
+  background: none; border: 0; padding: 0; font: inherit; color: var(--text); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--hue); text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.ds button.link:hover { color: var(--muted); }
+
+.ds .ds-warn {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid #b54708;
+  padding: 10px 14px; border-radius: 6px; margin-top: 12px;
 }
 
-h1 { margin: 0; font-size: 2rem; }
-h2 { margin: 1.5rem 0 0.25rem; }
+.ds .ac-section { margin-top: 8px; }
+.ds .ac-section h2, .ds .planner h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
 
-.caption { color: #666; margin: 0.25rem 0 1rem; }
-.hint { color: #444; }
+/* metric cards */
+.ds .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+.ds .metrics-3 { grid-template-columns: repeat(3, 1fr); }
+.ds .metric { padding: 16px 18px; }
+.ds .metric-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ds .metric-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 4px; line-height: 1.2; }
+.ds .change-value { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ds .old-value { font-size: 15px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.ds .change-delta, .ds .outcome-detail { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.ds .change-delta.up { color: #067647; font-weight: 600; }
+.ds .change-delta.down { color: #b42318; font-weight: 600; }
+@media (max-width: 860px) { .ds .metrics, .ds .metrics-3 { grid-template-columns: 1fr 1fr; } }
 
-.lookup {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
+/* tooltips */
+.ds .tip {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border);
+  font-size: 11px; color: var(--muted); cursor: help;
 }
-.lookup input {
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  border: 1px solid #bbb;
-  border-radius: 6px;
-  width: 12rem;
+.ds .tip-text {
+  display: none; position: absolute; z-index: 10; bottom: 135%; left: 50%; transform: translateX(-50%);
+  width: 240px; padding: 8px 10px; border-radius: 6px; background: var(--text); color: #fff;
+  font-size: 12px; line-height: 1.4; font-weight: 400; text-align: left;
 }
-.lookup button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  border: 0;
-  border-radius: 6px;
-  background: #f26b1d;
-  color: #fff;
-  cursor: pointer;
-}
-.lookup button:disabled { opacity: 0.6; cursor: default; }
+.ds .tip:hover .tip-text, .ds .tip:focus .tip-text { display: block; }
+.ds .tip:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
-button.link {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: #f26b1d;
-  text-decoration: underline;
-  cursor: pointer;
-  font: inherit;
+/* scenario planner */
+.ds .planner { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
+.ds .planner-form { margin-top: 12px; }
+.ds .planner-form textarea {
+  width: 100%; resize: vertical; min-height: 72px; padding: 8px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);
 }
+.ds .planner-form textarea:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.ds .planner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }
+.ds .planner-actions .hint { margin: 0; }
+.ds .planner .ds-error { margin-top: 16px; }
+.ds .planner h3 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 24px 0 8px; }
+.ds .text-card p { font-size: 15px; max-width: 70ch; }
+.ds .justification { margin-top: 8px; color: var(--muted); font-size: 14px !important; }
+.ds .var-table { margin-top: 12px; max-width: 520px; }
+.ds .planner-result > .caption { margin-top: 16px; font-size: 13px; }
+.ds .planner-divide { border: 0; border-top: 2px solid var(--text); margin: 40px 0 8px; }
 
-.banner { padding: 0.6rem 0.9rem; border-radius: 6px; margin: 0.5rem 0; }
-.banner.error { background: #fde8e8; color: #8a1c1c; }
-.banner.warn { background: #fff4d6; color: #7a5600; }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
-}
-.metric {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 0.9rem 1rem;
-  background: #fff;
-}
-.metric-label { font-size: 0.85rem; color: #555; display: flex; align-items: center; gap: 0.4rem; }
-.metric-value { font-size: 1.6rem; font-weight: 600; margin-top: 0.25rem; color: #222; }
-
-.tip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 50%;
-  border: 1px solid #999;
-  font-size: 0.7rem;
-  color: #666;
-  cursor: help;
-}
-.tip-text {
-  display: none;
-  position: absolute;
-  z-index: 10;
-  bottom: 135%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 15rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 6px;
-  background: #222;
-  color: #fff;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  text-align: left;
-}
-.tip:hover .tip-text,
-.tip:focus .tip-text { display: block; }
-
-.planner { margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 1rem; }
-.planner h3 { margin: 1.25rem 0 0.25rem; font-size: 1.1rem; }
-.planner-form textarea {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.6rem 0.75rem;
-  font: inherit;
-  border: 1px solid #bbb;
-  border-radius: 6px;
-  resize: vertical;
-}
-.planner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.5rem 0; }
-.planner-actions button[type='submit'] {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  border: 0;
-  border-radius: 6px;
-  background: #f26b1d;
-  color: #fff;
-  cursor: pointer;
-}
-.planner-actions button[type='submit']:disabled { opacity: 0.6; cursor: default; }
-.var-table { border-collapse: collapse; font-size: 0.9rem; margin: 0.5rem 0; }
-.var-table th { text-align: left; font-weight: normal; color: #555; padding: 0.2rem 1.5rem 0.2rem 0; }
-.var-table td { font-weight: 600; }
-.change-value { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
-.old-value { font-size: 1rem; font-weight: 400; color: #888; }
-.change-delta { font-size: 0.8rem; color: #666; margin-top: 0.15rem; }
-.outcome-detail { font-size: 0.8rem; color: #666; margin-top: 0.25rem; }
-
-details { margin-top: 1.5rem; }
-pre { background: #f6f6f6; padding: 1rem; overflow: auto; font-size: 0.8rem; }
-
-@media (prefers-color-scheme: dark) {
-  .caption, .hint, .metric-label, .var-table th, .outcome-detail, .change-delta { color: #aaa; }
-  .planner-form textarea { background: #1e1e1e; color: #eee; border-color: #444; }
-  .metric { background: #1e1e1e; border-color: #333; }
-  .metric-value { color: #f1f1f1; }
-  pre { background: #1a1a1a; }
-  .lookup input { background: #1e1e1e; color: #eee; border-color: #444; }
+/* raw JSON */
+.ds details.raw { margin-top: 16px; }
+.ds details.raw summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.ds details.raw pre {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; overflow: auto; font-size: 12px; margin: 8px 0 0;
 }
