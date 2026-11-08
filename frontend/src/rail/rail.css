@@ -102,3 +102,14 @@ html.rs-snap { scroll-snap-type: y mandatory; }
   .rh-step { top: 76px; }
   .rh-h2 { font-size: 2.6rem; }
 }
+
+/* first screen: a direct way to the findings */
+.rh-findings {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 12px 20px; width: fit-content; justify-self: start; align-self: start;
+  font-size: 1rem; font-weight: 600; color: var(--paint, #efefed); background: var(--ink, #1a1d20); text-decoration: none;
+  pointer-events: auto; transition: transform 160ms ease;
+}
+.rh-findings:hover { transform: translateY(-2px); }
+.rh-findings span { transition: transform 160ms ease; }
+.rh-findings:hover span { transform: translateX(3px); }
+.rh-findings:focus-visible { outline: 3px solid var(--orange, #ef6a1a); outline-offset: 3px; }

@@ -170,6 +170,9 @@ export default function RailHero() {
             It shows how many months a Tangerine customer&rsquo;s savings would last after a job loss or a surprise
             bill, and turns on the protections that keep them going.
           </p>
+          <a className="rh-findings" href="#/findings">
+            See our findings <span aria-hidden="true">→</span>
+          </a>
           <p className="rh-hint">Scroll to drive <span aria-hidden="true">↓</span></p>
         </div>
 

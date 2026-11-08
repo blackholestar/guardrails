@@ -1,0 +1,68 @@
+/* Our findings: the exploration as a road trip, one step after another. Uses the engine's tokens. */
+.fx { --sign-font: 'Overpass', 'Switzer', ui-sans-serif, sans-serif; }
+.fx-main { width: min(1100px, calc(100vw - 2 * var(--m))); margin: 0 auto; padding: 56px 0 120px; }
+
+.fx-hero { margin-bottom: 56px; }
+.fx-kicker { margin: 0 0 12px; font-family: var(--sign-font); font-weight: 800; font-size: 1.0625rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--orange); }
+.fx-title { margin: 0; font-family: var(--sign-font); font-weight: 800; font-size: clamp(2.25rem, 1.4rem + 3vw, 4rem); line-height: 1.02; letter-spacing: -0.02em; max-width: 18ch; }
+.fx-lead { margin: 20px 0 0; font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.3125rem); line-height: 1.5; max-width: 62ch; }
+.fx-src { margin: 14px 0 0; font-size: 0.9375rem; color: var(--ink-soft); }
+.fx-src code { font-size: 0.875rem; background: #fff; padding: 1px 6px; }
+
+/* the steps: a road down the left with a numbered post per step */
+.fx-steps { list-style: none; margin: 0; padding: 0 0 0 64px; position: relative; }
+.fx-steps::before {
+  content: ''; position: absolute; left: 21px; top: 0; bottom: 0; width: 4px;
+  background: repeating-linear-gradient(#f2c230 0 22px, transparent 22px 38px);
+}
+.fx-step { position: relative; padding-bottom: 64px; }
+.fx-step-head { display: flex; align-items: center; gap: 16px; margin-left: -64px; }
+.fx-n {
+  flex: 0 0 46px; height: 46px; display: grid; place-items: center; position: relative; z-index: 1;
+  background: var(--sign, #0b6b45); color: #fff; font-family: var(--sign-font); font-weight: 800; font-size: 1.0625rem;
+  border-radius: 6px; box-shadow: inset 0 0 0 3px var(--sign, #0b6b45), inset 0 0 0 5px #fff;
+}
+.fx-step h2 { margin: 0; font-family: var(--sign-font); font-weight: 800; font-size: clamp(1.5rem, 1.2rem + 1vw, 2.125rem); line-height: 1.1; }
+.fx-asked { margin: 16px 0 18px; font-size: 1.0625rem; line-height: 1.5; max-width: 70ch; }
+.fx-asked b, .fx-saw b {
+  display: block; margin-bottom: 4px; font-family: var(--sign-font); font-weight: 800; font-size: 0.875rem;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--orange);
+}
+.fx-fig { margin: 0; background: #fcfcfb; padding: 14px; box-shadow: 0 0 0 1px rgb(26 29 32 / 0.08), 0 10px 30px -22px rgb(26 29 32 / 0.5); }
+.fx-fig img { display: block; width: 100%; height: auto; }
+.fx-saw { margin-top: 18px; }
+.fx-saw ul { margin: 0; padding-left: 20px; font-size: 1.0625rem; line-height: 1.55; }
+.fx-saw li + li { margin-top: 4px; }
+.fx-lesson { margin: 16px 0 0; padding: 14px 18px; background: var(--ink); color: var(--paint); font-weight: 600; font-size: 1.0625rem; }
+.fx-next { margin: 20px 0 0; font-family: var(--sign-font); font-weight: 700; font-size: 1.1875rem; color: var(--ink); }
+.fx-next span { color: var(--orange); margin-right: 6px; }
+
+/* where the trail led */
+.fx-confirm { margin-top: 24px; }
+.fx-confirm-title { margin: 0 0 24px; font-family: var(--sign-font); font-weight: 800; font-size: clamp(1.625rem, 1.2rem + 1.4vw, 2.5rem); line-height: 1.1; max-width: 26ch; }
+.fx-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.fx-card { background: #fbfbfa; padding: 16px 18px 20px; box-shadow: 0 0 0 1px rgb(26 29 32 / 0.08), 0 10px 30px -22px rgb(26 29 32 / 0.5); display: flex; flex-direction: column; }
+.fx-card img { display: block; width: 100%; height: auto; margin-bottom: 14px; }
+.fx-card h3 { margin: 0; font-family: var(--sign-font); font-weight: 800; font-size: 1.25rem; }
+.fx-card p { margin: 8px 0 0; font-size: 0.9875rem; line-height: 1.5; }
+.fx-rail { margin-top: auto !important; padding-top: 14px; font-family: var(--sign-font); font-weight: 700; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+.fx-rail span { margin-left: 8px; padding: 4px 10px 2px; background: var(--orange); color: var(--ink); letter-spacing: 0.02em; }
+.fx-cta {
+  display: inline-flex; gap: 8px; align-items: center; margin-top: 32px; padding: 16px 26px; background: var(--orange); color: var(--ink);
+  font-weight: 700; font-size: 1.125rem; text-decoration: none;
+}
+.fx-cta:hover { transform: translateY(-2px); }
+.fx-caveat { margin: 20px 0 0; font-size: 0.875rem; color: var(--ink-soft); max-width: 80ch; line-height: 1.5; }
+
+@media (max-width: 760px) {
+  .fx-cards { grid-template-columns: 1fr; }
+  .fx-steps { padding-left: 0; }
+  .fx-steps::before { display: none; }
+  .fx-step-head { margin-left: 0; }
+}
+
+/* which later step a matrix observation leads to */
+.fx-hint { display: inline-block; margin-left: 4px; padding: 1px 8px; font-size: 0.875rem; font-weight: 700; color: var(--ink);
+  background: rgb(239 106 26 / 0.16); text-decoration: none; white-space: nowrap; }
+.fx-hint:hover { background: var(--orange); }
+.fx-step, .fx-card { scroll-margin-top: 80px; }

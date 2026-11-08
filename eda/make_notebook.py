@@ -123,6 +123,40 @@ print('correlations:', rho.round(2).to_dict())"""),
        "The surprise was income: it runs the **wrong way** (−0.68), because spending rises with it (−0.79). "
        "That one bar set up Steps 3 to 5."),
 
+    md("## Step 2c. Every variable against every other\n"
+       "**We asked:** which things move together? We took twelve per-customer measures and correlated each pair "
+       "(Spearman, so a few very large accounts can't dominate)."),
+    code("""from matplotlib.colors import LinearSegmentedColormap
+g = ms.groupby('account_id')
+v = pd.DataFrame({
+    'Income': x.I_income, 'Spending': x.S_spending, 'Savings ($)': x.B_buffer, 'Savings (months)': x.buffer_months,
+    'Household bills': x.H_bills if 'H_bills' in x else g.household_bills.median().reindex(x.index),
+    'Loan payment': g.loan_payments.median().reindex(x.index),
+    'Cash share': (g.cash_withdrawals_genuine.sum() / g.money_out.sum()).reindex(x.index),
+    'Income volatility': (g.money_in.std() / g.money_in.mean()).reindex(x.index),
+    'Lowest balance': g.min_balance.min().reindex(x.index),
+    'Months overdrawn': (ms.days_below_zero > 0).groupby(ms.account_id).sum().reindex(x.index),
+    'Age': x.age, 'Runway on EI': x.ei_runway})
+C = v.corr(method='spearman')
+cmap = LinearSegmentedColormap.from_list('div', [ORANGE, '#f4f3ee', BLUE])
+fig, ax = plt.subplots(figsize=(11, 9.5))
+im = ax.imshow(C.values, cmap=cmap, vmin=-1, vmax=1)
+ax.set_xticks(range(len(C)), C.columns, rotation=40, ha='right'); ax.set_yticks(range(len(C)), C.index)
+for i in range(len(C)):
+    for j in range(len(C)):
+        if i != j: ax.text(j, i, f'{C.iat[i, j]:+.2f}'.replace('+0.', '.').replace('-0.', '−.'), ha='center', va='center', fontsize=8.5,
+                           color=INK if abs(C.iat[i, j]) < 0.6 else SURFACE, fontweight='bold' if abs(C.iat[i, j]) >= 0.4 else 'normal')
+for s in ax.spines.values(): s.set_visible(False)
+ax.tick_params(length=0)
+ax.set_title('Every measure against every other', loc='left', fontsize=14, fontweight='bold', color=INK, pad=28)
+ax.text(0, 1.02, 'Spearman correlation per customer. Blue: rise together. Orange: one rises as the other falls.', transform=ax.transAxes, fontsize=10, color=INK2)
+cb = fig.colorbar(im, ax=ax, shrink=0.7, ticks=[-1, -0.5, 0, 0.5, 1]); cb.outline.set_visible(False)
+plt.tight_layout(); plt.show()
+pairs = C.where(np.triu(np.ones(C.shape, bool), 1)).stack().sort_values(key=abs, ascending=False)
+print('strongest pairs:'); print(pairs.head(8).round(2).to_string())
+print('runway on EI vs each:'); print(C['Runway on EI'].drop('Runway on EI').sort_values().round(2).to_string())"""),
+    md("**What we saw:** Income and spending move almost in lockstep (.97), so earning more mostly means spending more. Richer customers hold more savings in dollars (.58) but *fewer months* of savings (−.74), and months are what runway is made of (.95). Dollars of savings barely relate to runway at all (−.04). Among the smaller signals, a high cash share goes with unsteady income (.53), and the lowest balance goes with months overdrawn (−.43). Those pointed us at cash, steadiness and the worst day."),
+
     md("## Step 3. Hit everyone with the brief's shocks\n"
        "**We asked:** with the README formulas, how many run out of savings within 6 months under each shock?"),
     code("""rows = []
