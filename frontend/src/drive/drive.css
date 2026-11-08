@@ -240,7 +240,7 @@
 @media (prefers-reduced-motion: reduce) { .dv-guard[aria-pressed='true'] { animation: none; } .dv-seg-orange { transition: none; } }
 
 /* guardrails card */
-.dv-rails { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dv-rails { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
 .dv-rail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .dv-card-rails .dv-guard { background: #eceff0; font-size: 0.9375rem; padding: 9px 12px; }
 .dv-card-rails .dv-guard:hover { background: #e2e6e8; }
@@ -364,13 +364,15 @@
 @media (prefers-reduced-motion: reduce) { .dv-pane { transition: none; } }
 
 .dv-whybtn {
-  flex-basis: 100%; width: max-content; font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--ink);
-  background: #eceff0; border: 0; padding: 6px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+  margin-left: auto; font: inherit; font-size: 0.9375rem; font-weight: 600; color: var(--ink); background: none; border: 0;
+  padding: 4px 0; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap;
+  text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--orange); text-decoration-thickness: 2px;
 }
-.dv-whybtn span { transition: transform 200ms var(--ease); }
-.dv-whybtn:hover { background: #e2e6e8; }
+.dv-whybtn span { text-decoration: none; transition: transform 200ms var(--ease); }
 .dv-whybtn:hover span { transform: translateX(3px); }
-.dv-whybtn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.dv-whybtn:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+.dv-rail { padding: 10px 0; border-bottom: 1px solid rgb(26 29 32 / 0.08); } /* taste-skill-ignore: list rows */
+.dv-rail:last-child { border-bottom: 0; }
 
 /* the explainer */
 .dx { background: #fbfbfa; padding: 28px 32px 36px; box-shadow: 0 0 0 1px rgb(26 29 32 / 0.08), 0 10px 30px -22px rgb(26 29 32 / 0.5); }
