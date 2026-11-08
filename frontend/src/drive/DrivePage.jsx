@@ -630,13 +630,13 @@ export default function DrivePage({ initialAccount }) {
                       <p className="dv-agent-sub">Payments it reviewed</p>
                       <ol className="dv-agent-log">
                         {payments.map((p) => {
-                          const st = p.status.startsWith('approved') ? 'applied' : p.status === 'held' ? 'held' : 'refused'
-                          const verdict = { approved: 'Let through', 'approved anyway': 'Let through after the customer\u2019s code', held: 'Held: waiting for the customer\u2019s code', cancelled: 'Declined by the customer' }[p.status] || p.status
+                          const st = p.status === 'held' ? 'held' : p.overspend ? 'refused' : 'applied'
+                          const label = p.status === 'held' ? 'On hold' : p.overspend ? 'Overspending' : p.necessary ? 'Necessary spending' : 'Not necessary, but small'
                           return (
                             <li key={p.id} className={`is-${st}`}>
-                              <span className="dv-agent-mark" aria-hidden="true">{st === 'applied' ? '✓' : st === 'held' ? '⏸' : '✗'}</span>
+                              <span className="dv-agent-mark" aria-hidden="true">{st === 'applied' ? '✓' : st === 'held' ? '⏸' : '!'}</span>
                               <code>review_payment({p.merchant}, {money(p.amount)}{p.paypal ? ', PayPal' : ''})</code>
-                              <span className="dv-agent-detail">{verdict}. {p.necessary ? 'Necessary' : 'Not necessary'}: {p.reason}</span>
+                              <span className="dv-agent-detail">{label}: {p.limit || p.reason}{p.overspend ? ' Paid; the customer got a heads-up.' : ''}</span>
                             </li>
                           )
                         })}

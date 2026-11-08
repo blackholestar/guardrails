@@ -26,7 +26,6 @@ ESSENTIAL_WORDS = (
     "bill", "loan", "grocer", "supermarket", "pharmac", "prescription", "daycare", "tuition", "transit", "gas station",
 )
 SMALL = 40  # dollars; anything this small just goes through
-HOLD_OVER = 500  # nudge mode: only discretionary purchases above this are held for a code
 
 
 @lru_cache(maxsize=1)
@@ -136,8 +135,8 @@ def _say(box: dict, text: str, kind: str = "info", **extra) -> dict:
 
 
 def purchase(account_id: int, merchant: str, category: str, amount: float, mode: str = "nudge", paypal: dict | None = None) -> dict:
-    """mode "hold": hold any discretionary purchase that hurts the runway. mode "nudge": let it through
-    with a message, holding only big ones (over HOLD_OVER) or ones that break a limit the agent set."""
+    """mode "nudge" (default): every purchase goes through; overspending is logged and messaged.
+    mode "hold": hold discretionary purchases that hurt the runway until the customer's code."""
     box = _state(account_id)
     card, settings = box["card"], box["settings"]
     is_cash = "atm" in f"{merchant} {category}".lower() or "cash" in category.lower()
@@ -171,10 +170,15 @@ def purchase(account_id: int, merchant: str, category: str, amount: float, mode:
         hold = True
     elif amount > SMALL and not verdict["necessary"]:
         hurts = (before - after) >= 0.05 or after < goal
-        hold = hurts and (mode == "hold" or amount > HOLD_OVER)
+        hold = hurts and mode == "hold"
+    if mode == "nudge":
+        hold = False  # everything goes through; the guardrails only log it and message the customer
 
     entry = {"id": f"p{len(box['purchases']) + 1}", "t": time.time(), "merchant": merchant, "category": category,
              "amount": amount, "necessary": verdict["necessary"], "reason": verdict["reason"], "judge": verdict["source"]}
+    entry["overspend"] = bool(limit_reason) or (
+        not verdict["necessary"] and amount > SMALL and ((before - after) >= 0.05 or after < goal))
+    entry["limit"] = limit_reason
     if paypal:
         entry["paypal"] = paypal
     if not hold:
@@ -183,8 +187,8 @@ def purchase(account_id: int, merchant: str, category: str, amount: float, mode:
             pp.capture(paypal["order_id"])
         _settle(box, entry, is_cash)
         _say(box, f"Approved: ${amount:,.2f} at {merchant}" + (" via PayPal." if paypal else "."), "ok")
-        if not verdict["necessary"] and amount > SMALL and ((before - after) >= 0.05 or after < goal):
-            _say(box, _message(merchant, amount, before, after, goal, P), "hold", why=verdict["reason"])
+        if entry["overspend"]:
+            _say(box, _message(merchant, amount, before, after, goal, P), "hold", why=limit_reason or verdict["reason"])
         return {"status": "approved", "purchase": entry, "state": public_state(account_id)}
 
     code = f"{random.randint(0, 9999):04d}"
