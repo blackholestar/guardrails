@@ -288,6 +288,8 @@ export default function DrivePage({ initialAccount }) {
       setOn({})
       setAgentLog([])
       setSafety(null)
+      // start the sandbox fresh too: no payments or limits from an earlier run
+      fetch(`/api/customer/${d.account_id}/reset`, { method: 'POST' }).catch(() => {})
       return d.profile
     } catch (err) {
       setError(err.status === 404 ? `There is no account ${id}.` : `Couldn't reach the engine: ${err.message}`)
