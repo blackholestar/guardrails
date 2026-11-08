@@ -285,3 +285,6 @@
 .dv-safety-title { margin: 0; font-weight: 600; font-size: 0.875rem; color: #ffd2c8; }
 .dv-safety .dv-agent-log { margin-top: 8px; }
 .dv-safety .dv-adjust { margin-top: 6px; font-size: 0.8125rem; }
+
+.dv-actas { margin-left: auto; color: var(--ink); background: var(--orange); font-weight: 600; font-size: 0.875rem; padding: 6px 12px; text-decoration: none; }
+.dv-actas:focus-visible { outline: 3px solid var(--paint); outline-offset: 2px; }

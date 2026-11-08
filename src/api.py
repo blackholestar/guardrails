@@ -117,7 +117,7 @@ def account(
 
 
 # ---------- Guardian agent (feature/agent) ----------
-from . import agent  # noqa: E402
+from . import agent, customer  # noqa: E402
 
 GuardrailKind = Literal[
     "cash_limit", "card_cap", "transfer_hold", "standing_order", "balance_alert", "loan_deferral", "reserve", "customer_step",
@@ -137,12 +137,58 @@ class AgentRequest(BaseModel):
     instruction: str | None = Field(None, max_length=500)  # extra request, e.g. the "try to break it" demo
     undo: bool = False
     simulate_attack: bool = False  # demo: inject forbidden tool calls to show the rule checker refusing them
+    shock: dict | None = None  # the shock in effect on the engine page, so the customer sandbox uses the same runway
 
 
 @app.post("/api/agent/apply")
 def agent_apply(req: AgentRequest):
     """The Guardian carries out (or undoes) one approved guardrail on the sandbox account; every tool call is rule-checked."""
     g = req.guardrail.model_dump()
+    if req.shock is not None:
+        customer.set_context(req.account_id, req.shock)
     if req.undo:
         return agent.undo_guardrail(req.account_id, g)
     return agent.apply_guardrail(req.account_id, g, req.instruction, req.simulate_attack)
+
+
+# ---------- Customer sandbox: act as the customer and spend (feature/agent) ----------
+class PurchaseRequest(BaseModel):
+    account_id: int
+    merchant: str = Field(min_length=1, max_length=80)
+    category: str = Field("", max_length=60)
+    amount: float = Field(gt=0, le=1_000_000)
+
+
+class ResolveRequest(BaseModel):
+    account_id: int
+    hold_id: str = Field(max_length=20)
+    approve: bool
+    code: str | None = Field(None, max_length=8)
+
+
+@app.get("/api/customer/{account_id}")
+def customer_state(account_id: int):
+    try:
+        return customer.public_state(account_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+
+
+@app.post("/api/customer/purchase")
+def customer_purchase(req: PurchaseRequest):
+    """Spend on the sandbox card. Guardrail limits apply, and the agent judges whether it's necessary."""
+    try:
+        return customer.purchase(req.account_id, req.merchant, req.category, req.amount)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Account {req.account_id} not found")
+
+
+@app.post("/api/customer/resolve")
+def customer_resolve(req: ResolveRequest):
+    """Approve a held purchase with its code, or cancel it."""
+    return customer.resolve(req.account_id, req.hold_id, req.code, req.approve)
+
+
+@app.post("/api/customer/{account_id}/reset")
+def customer_reset(account_id: int):
+    return customer.reset(account_id)

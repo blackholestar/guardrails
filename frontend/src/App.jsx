@@ -3,6 +3,7 @@ import AccountPage from './AccountPage'
 import Landing from './Landing'
 import RailHero from './rail/RailHero'
 import DrivePage from './drive/DrivePage'
+import CustomerPage from './customer/CustomerPage'
 
 // Hash routes: #/engine (optionally ?account=ID) opens the app page; anything else shows the landing page.
 // Plain in-page anchors such as #how stay on the landing page.
@@ -10,7 +11,7 @@ function readHash() {
   const [path, q] = window.location.hash.replace(/^#\/?/, '').split('?')
   if (path === 'rail' || path === '') return { page: 'rail' } // the scroll story is the home page
   if (path === 'old') return { page: 'landing' }
-  if (path !== 'engine' && path !== 'classic') return { page: 'rail' }
+  if (path !== 'engine' && path !== 'classic' && path !== 'customer') return { page: 'rail' }
   return { page: path, account: new URLSearchParams(q || '').get('account') }
 }
 
@@ -28,6 +29,7 @@ export default function App() {
   }, [route.page])
 
   if (route.page === 'engine') return <DrivePage key={route.account ?? ''} initialAccount={route.account} />
+  if (route.page === 'customer') return <CustomerPage key={route.account ?? ''} account={route.account} />
   if (route.page === 'classic') return <AccountPage key={route.account ?? ''} initialAccount={route.account} />
   if (route.page === 'rail') return <RailHero />
   return <Landing />

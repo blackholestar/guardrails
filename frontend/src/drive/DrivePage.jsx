@@ -245,7 +245,7 @@ export default function DrivePage({ initialAccount }) {
     const turningOn = opts.simulate_attack ? true : !on[x.id]
     setPending(x.id)
     try {
-      const d = await callAgent(c.id, x, turningOn ? opts : { undo: true })
+      const d = await callAgent(c.id, x, { ...(turningOn ? opts : { undo: true }), shock })
       const entries = d.events.map((e, i) => ({ ...e, key: `${Date.now()}-${i}`, rail: x.label, source: d.source }))
       const real = entries.filter((e) => !e.simulated)
       if (opts.simulate_attack) setSafety(entries.filter((e) => e.simulated))
@@ -594,6 +594,7 @@ export default function DrivePage({ initialAccount }) {
                 <div className="dv-agent">
                   <div className="dv-agent-head">
                     <p className="dv-agent-title">Guardian agent activity <span className="dv-who">sandbox account · every tool call is rule-checked</span></p>
+                    <a className="dv-actas" href={`#/customer?account=${c.id}`} target="_blank" rel="noreferrer">Act as this customer →</a>
                     <button type="button" className="dv-adjust" disabled={!!pending || !rails.length} onClick={() => toggleRail(rails.find((x) => on[x.id]) || rails[0], { simulate_attack: true })}>
                       Test the safety rules
                     </button>
