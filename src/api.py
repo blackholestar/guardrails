@@ -244,3 +244,27 @@ def paypal_approved(req: PayPalApprovedRequest):
     out = customer.purchase(req.account_id, req.store_name, category, order["amount"], mode="nudge", paypal=order)
     out["paypal"] = order
     return out
+
+
+# ---------- The customer's recent months, for the guardrail explainer charts (feature/agent) ----------
+@app.get("/api/history/{account_id}")
+def history(account_id: int, months: int = Query(12, ge=3, le=36)):
+    cols = ["month", "money_in", "money_out", "household_bills", "loan_payments", "bank_fees",
+            "cash_withdrawals_genuine", "card_withdrawals", "transfers_out_other", "min_balance", "avg_daily_balance"]
+    m = _history_frame()
+    rows = m[m["account_id"] == account_id].sort_values("month").tail(months)
+    if rows.empty:
+        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+    return {"account_id": account_id, "months": rows[cols].round(2).to_dict(orient="records")}
+
+
+_HIST = {}
+
+
+def _history_frame():
+    if "m" not in _HIST:
+        import pandas as pd
+
+        from .customer import DATA_DIR
+        _HIST["m"] = pd.read_csv(DATA_DIR / "monthly_summary.csv")
+    return _HIST["m"]

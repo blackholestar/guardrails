@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAccount, planScenario } from '../api'
 import { runway, money } from '../runway'
 import { useCustomer } from '../customer/customerApi'
+import { RailExplain } from './RailExplain'
 import ACCOUNT_IDS from '../data/account_ids.json'
 import './drive.css'
 
@@ -67,17 +68,6 @@ const TOOL_TITLE = {
 }
 const clock = (t) => new Date(t * 1000).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
 
-// The population finding behind each kind of guardrail (validated in findings/README.md).
-const RUNWAY_FINDING = 'Runway predicts trouble: customers with under 3 months of runway were overdrawn the next year 17.7% of the time, against 1.1% with 12+ months. Every month this adds lowers the risk.'
-const FINDING = {
-  cash_limit: 'Cash is the lever people really pull: in 569 real income crashes, cash spending fell 59% while bills, insurance and loan payments did not move.',
-  loan_deferral: 'Unsteady income (odds ratio 4.7) and a balance dip below $500 (4.9) predict loan default; income level does not. Talking to the lender before a missed payment targets that risk.',
-  balance_alert: 'A near-miss (balance between $0 and $500) comes a median 13 months before the first overdraft, and 64% of overdrawn accounts had one first. The alert catches it early.',
-  card_cap: RUNWAY_FINDING,
-  standing_order: RUNWAY_FINDING,
-  transfer_hold: RUNWAY_FINDING,
-  customer_step: RUNWAY_FINDING,
-}
 
 function railFromAction(a, i) {
   const amt = money(a.monthly_amount)
@@ -205,6 +195,7 @@ export default function DrivePage({ initialAccount }) {
   const [source, setSource] = useState(null) // 'ai' | 'rules' | 'preset' | 'manual'
   const [plan, setPlan] = useState(null)
   const [on, setOn] = useState({}) // which guardrails are switched on, by id
+  const [explain, setExplain] = useState(null) // id of the guardrail whose "why" is open
   const [agentLog, setAgentLog] = useState([]) // the Guardian's tool calls, newest first
   const [pending, setPending] = useState('') // guardrail id the agent is working on
   const [busy, setBusy] = useState('')
@@ -284,6 +275,14 @@ export default function DrivePage({ initialAccount }) {
     return () => clearTimeout(t)
   }, [railKey])
   const nextRail = rails.find((x) => !on[x.id])?.id
+
+  const stageRef = useRef(null)
+  function openExplain(id) {
+    setExplain(id)
+    stageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const closeExplain = useCallback(() => setExplain(null), [])
+  const explainRail = explain && rails.find((x) => x.id === explain)
 
   async function toggleRail(x, opts = {}) {
     if (pending) return
@@ -429,6 +428,8 @@ export default function DrivePage({ initialAccount }) {
       </header>
 
       <main className="dv-main">
+        <div ref={stageRef} className={`dv-stage${explainRail ? ' is-explain' : ''}`}>
+        <div className="dv-pane dv-pane-main" inert={explainRail ? true : undefined}>
         <div className="dv-head">
           <h1 className="dv-title">{ready ? `Account ${profile.id}` : 'Runway engine'}</h1>
           <p className="dv-sub">
@@ -626,14 +627,9 @@ export default function DrivePage({ initialAccount }) {
                         <span className="dv-gain">+{r.alone[x.id].toFixed(1)} mo</span>
                       </button>
                       <span className="dv-who">{x.who}{x.capped ? ' · capped at what they really spend' : ''}</span>
-                      <details className="dv-why">
-                        <summary>Why this</summary>
-                        <div className="dv-why-body">
-                          <p><strong>Backed by our finding.</strong> {FINDING[x.kind] || RUNWAY_FINDING}</p>
-                          {x.evidence && <p><strong>This customer.</strong> {x.evidence}</p>}
-                          {x.how && <p><strong>How.</strong> {x.how}</p>}
-                        </div>
-                      </details>
+                      <button type="button" className="dv-whybtn" onClick={() => openExplain(x.id)}>
+                        Why this <span aria-hidden="true">→</span>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -686,6 +682,20 @@ export default function DrivePage({ initialAccount }) {
               )}
             </section>
           )}
+        </div>
+        </div>
+        <div className="dv-pane dv-pane-explain" inert={explainRail ? undefined : true}>
+          {explainRail && r && (
+            <RailExplain
+              key={explainRail.id}
+              accountId={c.id}
+              rail={explainRail}
+              before={r.shocked.months}
+              after={r.shocked.months + (r.alone[explainRail.id] || 0)}
+              onBack={closeExplain}
+            />
+          )}
+        </div>
         </div>
       </main>
 
