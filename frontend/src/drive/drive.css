@@ -31,7 +31,7 @@
 
 /* bar */
 .dv-bar {
-  position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center;
   padding: 14px var(--m); background: var(--asphalt); color: var(--paint);
 }
 .dv-mark { font-weight: 600; font-size: 1.375rem; letter-spacing: -0.04em; color: var(--paint); text-decoration: none; }
