@@ -77,3 +77,8 @@
   .sh-side { position: static; }
   .sh-search { display: none; }
 }
+
+/* PayPal */
+.sh-or { margin: 10px 0 6px; text-align: center; font-size: 0.8125rem; color: var(--soft); }
+.sh-pp { min-height: 44px; }
+.sh-pp-note { font-size: 0.8125rem; margin-top: 6px; }

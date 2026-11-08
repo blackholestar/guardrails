@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { money } from '../runway'
+import { PayPalButtons } from './PayPalButtons'
 import { Phone } from './Phone'
 import { customerApi, useCustomer } from './customerApi'
 import './customer.css'
@@ -10,6 +11,7 @@ import './shop.css'
 
 const STORES = {
   'fresh-basket': {
+    key: 'fresh-basket',
     name: 'Fresh Basket',
     tagline: 'Groceries delivered',
     category: 'groceries',
@@ -31,6 +33,7 @@ const STORES = {
     ],
   },
   volt: {
+    key: 'volt',
     name: 'Volt',
     tagline: 'Electronics & gaming',
     category: 'electronics',
@@ -136,6 +139,21 @@ export default function ShopPage({ store: storeKey, account }) {
             <button type="button" className="sh-checkout" disabled={!total || busy} onClick={checkout}>
               {busy ? 'Paying…' : 'Checkout with card'}
             </button>
+            {total > 0 && (
+              <>
+                <p className="sh-or">or</p>
+                <PayPalButtons
+                  id={id}
+                  store={store}
+                  items={items.map(([name, qty]) => ({ name, qty, price: store.products.find((p) => p.name === name).price }))}
+                  onDone={(d) => {
+                    setState(d.state)
+                    setResult(d.status)
+                    if (d.status === 'approved') setCart({})
+                  }}
+                />
+              </>
+            )}
             {result === 'approved' && <p className="sh-note ok">Paid. Thanks for shopping.</p>}
             {result === 'held' && <p className="sh-note hold">Payment on hold. Check your phone.</p>}
             <p className="cu-muted sh-bal">Card balance: {state ? money(state.balance) : '—'}</p>

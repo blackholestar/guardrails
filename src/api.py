@@ -192,3 +192,55 @@ def customer_resolve(req: ResolveRequest):
 @app.post("/api/customer/{account_id}/reset")
 def customer_reset(account_id: int):
     return customer.reset(account_id)
+
+
+# ---------- PayPal sandbox checkout for the demo stores (feature/agent) ----------
+from . import paypal  # noqa: E402
+
+
+class PayPalItem(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    price: float = Field(gt=0, le=100_000)
+    qty: int = Field(ge=1, le=99)
+
+
+class PayPalOrderRequest(BaseModel):
+    account_id: int
+    store: str = Field(max_length=40)
+    store_name: str = Field(max_length=80)
+    items: list[PayPalItem] = Field(min_length=1, max_length=50)
+
+
+class PayPalApprovedRequest(BaseModel):
+    account_id: int
+    order_id: str = Field(max_length=40)
+    store_name: str = Field(max_length=80)
+    category: str = Field("", max_length=40)
+
+
+@app.get("/api/paypal/config")
+def paypal_config():
+    """The public client ID for the PayPal buttons (never the secret)."""
+    return {"enabled": paypal.enabled(), "client_id": paypal.client_id() if paypal.enabled() else None}
+
+
+@app.post("/api/paypal/order")
+def paypal_order(req: PayPalOrderRequest):
+    if not paypal.enabled():
+        raise HTTPException(status_code=503, detail="PayPal is not configured")
+    return {"id": paypal.create_order(req.store, req.store_name, [i.model_dump() for i in req.items])}
+
+
+@app.post("/api/paypal/approved")
+def paypal_approved(req: PayPalApprovedRequest):
+    """The shopper approved in PayPal. Read the order from PayPal (payee, items, total), let the guardrails
+    judge it, then capture it or hold it uncaptured until the shopper enters the code."""
+    if not paypal.enabled():
+        raise HTTPException(status_code=503, detail="PayPal is not configured")
+    order = paypal.summary(paypal.get_order(req.order_id))
+    if order["status"] != "APPROVED":
+        raise HTTPException(status_code=409, detail=f"Order is {order['status']}, not approved")
+    category = f"{req.category}: {', '.join(order['items'])}"[:60]
+    out = customer.purchase(req.account_id, req.store_name, category, order["amount"], mode="nudge", paypal=order)
+    out["paypal"] = order
+    return out
