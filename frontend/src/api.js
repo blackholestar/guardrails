@@ -28,6 +28,14 @@ export const planScenario = (accountId, scenario) => getJson('/api/ai/plan', {
   body: JSON.stringify({ account_id: Number(accountId), scenario }),
 })
 
+// Follow-up about a plan. history: [{role: 'user' | 'model', text}], starting with the scenario; model turns are the
+// `model_turn` values earlier responses returned. Reply has `reply` and `revised` (a scored plan, or null).
+export const followUp = (accountId, history, message) => getJson('/api/ai/followup', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ account_id: Number(accountId), history, message }),
+})
+
 // shock: optional object with income_multiplier, income_months, bills_pct, one_off_cost, extra_monthly
 export function fetchAccount(accountId, shock = {}) {
   const params = new URLSearchParams()
