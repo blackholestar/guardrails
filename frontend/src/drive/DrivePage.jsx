@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchAccount, planScenario } from '../api'
 import { runway, money } from '../runway'
+import { useCustomer } from '../customer/customerApi'
 import ACCOUNT_IDS from '../data/account_ids.json'
 import './drive.css'
 
@@ -194,6 +195,9 @@ export default function DrivePage({ initialAccount }) {
 
   // ---------- numbers (judges' formula) ----------
   const c = profile
+  // payments made in the demo stores, which the Guardian reviewed (polled from the customer sandbox)
+  const { state: shopper } = useCustomer(profile?.id)
+  const payments = [...(shopper?.purchases || [])].reverse()
   const hasShock =
     shock.income_multiplier !== 1 || shock.bills_pct !== 0 || shock.one_off_cost !== 0 || shock.extra_monthly !== 0
 
@@ -620,6 +624,25 @@ export default function DrivePage({ initialAccount }) {
                       </ol>
                       <button type="button" className="dv-adjust" onClick={() => setSafety(null)}>Hide test</button>
                     </div>
+                  )}
+                  {payments.length > 0 && (
+                    <>
+                      <p className="dv-agent-sub">Payments it reviewed</p>
+                      <ol className="dv-agent-log">
+                        {payments.map((p) => {
+                          const st = p.status.startsWith('approved') ? 'applied' : p.status === 'held' ? 'held' : 'refused'
+                          const verdict = { approved: 'Let through', 'approved anyway': 'Let through after the customer\u2019s code', held: 'Held: waiting for the customer\u2019s code', cancelled: 'Declined by the customer' }[p.status] || p.status
+                          return (
+                            <li key={p.id} className={`is-${st}`}>
+                              <span className="dv-agent-mark" aria-hidden="true">{st === 'applied' ? '✓' : st === 'held' ? '⏸' : '✗'}</span>
+                              <code>review_payment({p.merchant}, {money(p.amount)}{p.paypal ? ', PayPal' : ''})</code>
+                              <span className="dv-agent-detail">{verdict}. {p.necessary ? 'Necessary' : 'Not necessary'}: {p.reason}</span>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                      <p className="dv-agent-sub">Guardrails it set</p>
+                    </>
                   )}
                   {agentLog.length === 0 ? (
                     <p className="dv-placeholder">Click a guardrail. The agent carries it out with tools, and you&rsquo;ll see each call here.</p>
